@@ -88,6 +88,7 @@ export async function GET(req) {
   const url = new URL(req.url);
   console.log("a1")
   if (url.searchParams.get('stream') === 'true') {
+    console.log(stream,"stream")
     const stream = new ReadableStream({
       start(controller) {
         // Add client to the list
