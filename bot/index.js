@@ -105,7 +105,7 @@ const processMessage = (m) => {
 
   // Convert Discord relative timestamps <t:...:R> to local time string
   stockData = stockData.replace(/<t:(\d+):R>/g, (match, ts) => {
-    const date = new Date(parseInt(ts, 2) * 1000);
+    const date = new Date(parseInt(ts, 10) * 1000);
     return date.toLocaleTimeString();
   });
 
@@ -121,7 +121,7 @@ const processMessage = (m) => {
 };
 
 // === When bot is ready ===
-client.once("clientReady ", async () => {
+client.once("ready", async () => {
   console.log(`🤖 Logged in as ${client.user.tag}`);
   console.log(`📊 Monitoring channel: ${CHANNEL_ID}`);
   console.log(`🌐 Next.js URL: ${NEXT_API_URL}`);
@@ -136,13 +136,12 @@ client.once("clientReady ", async () => {
     console.log(`✅ Connected to channel: ${channel.name}`);
 
     // Fetch recent messages
-    const messages = await channel.messages.fetch({ limit: 2 });
-    console.log(messages,"messages")
+    const messages = await channel.messages.fetch({ limit: 10 });
     const stockMessages = messages
       .filter(msg => isStockMessage(msg.content))
       .map(processMessage)
       .sort((a, b) => a.createdAt - b.createdAt);
-    console.log()
+    console.log(messages,"messages")
     console.log(`✅ Found ${stockMessages.length} stock messages`);
 
     // Send initial messages
