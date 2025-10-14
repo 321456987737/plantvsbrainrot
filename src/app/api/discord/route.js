@@ -47,6 +47,7 @@ export async function POST(req) {
   let body;
   try {
     body = await req.json();
+     console.log("📩 [Next.js API] Received from bot:", body);
   } catch (err) {
     return NextResponse.json(
       { success: false, error: "Invalid JSON" },
