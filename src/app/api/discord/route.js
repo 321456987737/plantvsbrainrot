@@ -35,13 +35,14 @@ function broadcastToClients(message) {
 // === POST: Receive new messages from Discord bot ===
 export async function POST(req) {
   const header = req.headers.get("x-bot-secret") || "";
-
+  console.log(1)
   if (!SECRET || header !== SECRET) {
     return NextResponse.json(
       { success: false, error: "Unauthorized" },
       { status: 401 }
     );
   }
+  console.log(2)
 
   let body;
   try {
@@ -52,14 +53,14 @@ export async function POST(req) {
       { status: 400 }
     );
   }
-
+console.log(3)
   if (!validateMessage(body)) {
     return NextResponse.json(
       { success: false, error: "Invalid message shape" },
       { status: 400 }
     );
   }
-
+  console.log(4)
   const msg = {
     id: body.id,
     author: body.author,
@@ -67,7 +68,7 @@ export async function POST(req) {
     createdAt: typeof body.createdAt === "string" ? Number(body.createdAt) : body.createdAt,
     receivedAt: Date.now(),
   };
-
+console.log(5)
   // Push to front and cap memory buffer size
   memoryBuffer.unshift(msg);
   if (memoryBuffer.length > MAX_BUFFER) memoryBuffer.length = MAX_BUFFER;
@@ -77,7 +78,7 @@ export async function POST(req) {
     type: "NEW_MESSAGE",
     message: msg
   });
-
+  console.log(6)
   return NextResponse.json({ success: true }, { status: 200 });
 }
 
@@ -85,6 +86,7 @@ export async function POST(req) {
 export async function GET(req) {
   // Check if this is an SSE request
   const url = new URL(req.url);
+  console.log("a1")
   if (url.searchParams.get('stream') === 'true') {
     const stream = new ReadableStream({
       start(controller) {
@@ -105,7 +107,8 @@ export async function GET(req) {
         });
       },
     });
-
+console.log("a2")
+console.log(stream)
     return new Response(stream, {
       headers: {
         'Content-Type': 'text/event-stream',
