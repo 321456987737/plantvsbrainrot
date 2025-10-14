@@ -302,6 +302,7 @@ client.once("clientReady ", async () => {
 
     // Fetch last 2 messages
     const messages = await channel.messages.fetch({ limit: 2 });
+    console.log(messages,"messages")
     const latestMessages = messages
       .map(processMessage)
       .sort((a, b) => a.createdAt - b.createdAt);
@@ -328,7 +329,7 @@ client.on("messageCreate", async (message) => {
 
     const processed = processMessage(message);
     console.log("📨 New stock message:", processed);
-
+    
     // Push to Next.js UI
     await postToNext({
       id: processed.id,
