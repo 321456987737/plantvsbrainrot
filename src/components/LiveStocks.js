@@ -42,14 +42,14 @@ export default function LiveStocks() {
           items.push({
             img: el.src,
             name: el.alt,
-            quantity: el.nextSibling?.textContent?.trim() || "",
+            quantity: el.nextSibling?.textContent || "",
           });
         } else if (el.tagName === "DIV") {
           el.querySelectorAll("img").forEach((i) =>
             items.push({
               img: i.src,
               name: i.alt,
-              quantity: i.nextSibling?.textContent?.trim() || "",
+              quantity: i.nextSibling?.textContent || "",
             })
           );
         }
@@ -100,11 +100,11 @@ export default function LiveStocks() {
             {sections.seeds.map((item, i) => (
               <div
                 key={i}
-                className="flex items-center justify-between mb-1 border-b-2 border-gray-200 pb-1"
+                className="flex items-center justify-start gap-4 mb-1 border-b-2 border-gray-200 pb-1"
               >
                 <div className="flex items-center gap-2">
                   <img src={item.img} alt={item.name} className="w-6 h-6" />
-                  <span>{item.name}</span>
+                  {/* <span>{item.name}</span> */}
                 </div>
                 <span className="font-semibold">{item.quantity}</span>
               </div>
@@ -118,11 +118,11 @@ export default function LiveStocks() {
             {sections.gear.map((item, i) => (
               <div
                 key={i}
-                className="flex items-center justify-between mb-1 border-b-2 border-gray-200 pb-1"
+                className="flex items-center justify-start gap-4 mb-1 border-b-2 border-gray-200 pb-1"
               >
                 <div className="flex items-center gap-2">
                   <img src={item.img} alt={item.name} className="w-6 h-6" />
-                  <span>{item.name}</span>
+                  {/* <span>{item.name}</span> */}
                 </div>
                 <span className="font-semibold">{item.quantity}</span>
               </div>
