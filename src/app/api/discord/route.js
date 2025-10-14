@@ -99,7 +99,7 @@ export async function GET(req) {
         globalThis.__DISCORD_CLIENTS.push(client);
 
         // Send initial batch of messages
-        const initialMessages = [...memoryBuffer].slice(0, 2).reverse();
+        const initialMessages = [...memoryBuffer].reverse();
         controller.enqueue(`data: ${JSON.stringify({
           type: "INITIAL_DATA",
           messages: initialMessages,
