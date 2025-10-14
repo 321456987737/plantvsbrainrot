@@ -195,8 +195,8 @@ import dotenv from "dotenv";
 
 dotenv.config();
 
-const NEXT_API_URL = process.env.NEXT_API_URL; // e.g. "https://plantvsbrainrot-rho.vercel.app"
-const POST_SECRET = process.env.DISCORD_POST_SECRET; // shared secret with Next.js
+const NEXT_API_URL = process.env.NEXT_API_URL; 
+const POST_SECRET = process.env.DISCORD_POST_SECRET; 
 const CHANNEL_ID = process.env.CHANNEL_ID;
 
 if (!process.env.DISCORD_TOKEN) {
@@ -285,7 +285,7 @@ const processMessage = (m) => {
 };
 
 // === When bot is ready ===
-client.once("ready", async () => {
+client.once("clientReady ", async () => {
   console.log(`🤖 Logged in as ${client.user.tag}`);
 
   try {
