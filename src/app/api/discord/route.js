@@ -83,46 +83,102 @@ console.log(5)
 }
 
 // === GET: Server-Sent Events endpoint for real-time updates ===
+// app/api/discord/route.js
+
 export async function GET(req) {
-  // Check if this is an SSE request
   const url = new URL(req.url);
-  console.log("a1")
-  if (url.searchParams.get('stream') === 'true') {
-    console.log(stream,"stream")
+
+  // ✅ Handle Server-Sent Events (live updates)
+  if (url.searchParams.get("stream") === "true") {
+    console.log("🔗 SSE connection opened");
+
     const stream = new ReadableStream({
       start(controller) {
-        // Add client to the list
         const client = { controller };
         globalThis.__DISCORD_CLIENTS.push(client);
 
-        // Send initial data
+        // Send initial batch of messages
         const initialMessages = [...memoryBuffer].slice(0, 50).reverse();
         controller.enqueue(`data: ${JSON.stringify({
           type: "INITIAL_DATA",
-          messages: initialMessages
+          messages: initialMessages,
         })}\n\n`);
 
-        // Remove client when connection closes
-        req.signal.addEventListener('abort', () => {
-          globalThis.__DISCORD_CLIENTS = globalThis.__DISCORD_CLIENTS.filter(c => c !== client);
+        // Handle disconnects
+        req.signal.addEventListener("abort", () => {
+          console.log("❌ SSE client disconnected");
+          globalThis.__DISCORD_CLIENTS = globalThis.__DISCORD_CLIENTS.filter(
+            (c) => c !== client
+          );
         });
       },
     });
-console.log("a2")
-console.log(stream)
+
     return new Response(stream, {
       headers: {
-        'Content-Type': 'text/event-stream',
-        'Cache-Control': 'no-cache',
-        'Connection': 'keep-alive',
+        "Content-Type": "text/event-stream",
+        "Cache-Control": "no-cache",
+        Connection: "keep-alive",
       },
     });
   }
 
-  // Regular GET request (fallback)
+  // ✅ Regular GET fallback (returns latest messages)
   const copy = [...memoryBuffer].slice(0, 50).reverse();
   return NextResponse.json({ success: true, messages: copy });
 }
+
+// export async function GET(req) {
+//   // Check if this is an SSE request
+//   const url = new URL(req.url);
+//   console.log("a1")
+//   if (url.searchParams.get('stream') === 'true') {
+   
+//     const stream = new ReadableStream({
+//       start(controller) {
+//         // Add client to the list
+//         const client = { controller };
+//         globalThis.__DISCORD_CLIENTS.push(client);
+
+//         // Send initial data
+//         const initialMessages = [...memoryBuffer].slice(0, 50).reverse();
+//         controller.enqueue(`data: ${JSON.stringify({
+//           type: "INITIAL_DATA",
+//           messages: initialMessages
+//         })}\n\n`);
+
+//         // Remove client when connection closes
+//         req.signal.addEventListener('abort', () => {
+//           globalThis.__DISCORD_CLIENTS = globalThis.__DISCORD_CLIENTS.filter(c => c !== client);
+//         });
+//       },
+//     });
+// console.log("a2")
+// console.log(stream)
+//     return new Response(stream, {
+//       headers: {
+//         'Content-Type': 'text/event-stream',
+//         'Cache-Control': 'no-cache',
+//         'Connection': 'keep-alive',
+//       },
+//     });
+//   }
+
+//   // Regular GET request (fallback)
+//   const copy = [...memoryBuffer].slice(0, 50).reverse();
+//   return NextResponse.json({ success: true, messages: copy });
+// }
+
+
+
+
+
+
+
+
+
+
+
 
 // import { NextResponse } from "next/server";
 
