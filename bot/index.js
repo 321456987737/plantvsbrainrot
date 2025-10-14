@@ -1,16 +1,19 @@
 // bot/index.js
+import { createServer } from "http";
 import { Client, GatewayIntentBits } from "discord.js";
 import dotenv from "dotenv";
 dotenv.config();
 
-const NEXT_API_URL = process.env.NEXT_API_URL; // e.g. "https://plantvsbrainrot-rho.vercel.app"
-const POST_SECRET = process.env.DISCORD_POST_SECRET; // shared secret with Next.js
+const PORT = process.env.PORT ? Number(process.env.PORT) : 5000;
 const CHANNEL_ID = process.env.CHANNEL_ID;
+const DISCORD_TOKEN = process.env.DISCORD_TOKEN;
 
-if (!process.env.DISCORD_TOKEN) {
-  console.error("DISCORD_TOKEN not set. Exiting.");
+if (!DISCORD_TOKEN) {
+  console.error("❌ DISCORD_TOKEN not set. Exiting.");
   process.exit(1);
 }
+
+const clients = new Set();
 
 const client = new Client({
   intents: [
@@ -20,131 +23,123 @@ const client = new Client({
   ],
 });
 
-// small helper to POST to Next.js
-async function postToNext(payload) {
-  if (!NEXT_API_URL || !POST_SECRET) return;
-  try {
-    // Node 18+/22 has global fetch; this will also work on Render
-    console.log(1)
-    await fetch(`${NEXT_API_URL}/api/discord`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-bot-secret": POST_SECRET,
-      },
-      body: JSON.stringify(payload),
-    });
-  } catch (err) {
-    console.error("Failed to POST to Next.js:", err?.message || err);
-  }
-}
-
-// === Helper: process messages, embeds, emojis, timestamps ===
-const processMessage = (m) => {
+function processMessage(m) {
   let stockData = m.content || "";
-
-  // Handle embeds
-      console.log(2)
 
   if (m.embeds && m.embeds.length > 0) {
     stockData = m.embeds
       .map((e) => {
         let desc = e.description ?? "";
-        if (e.fields?.length) {
-          desc += "\n" + e.fields.map((f) => `${f.name}: ${f.value}`).join("\n");
-        }
-        if (e.title) {
-          desc = `${e.title}\n${desc}`;
-        }
+        if (e.fields?.length) desc += "\n" + e.fields.map((f) => `${f.name}: ${f.value}`).join("\n");
+        if (e.title) desc = `${e.title}\n${desc}`;
         return desc;
       })
       .join("\n");
   }
-    console.log(3)
 
-  // Convert custom Discord emojis to <img>
-  stockData = stockData.replace(/<:([a-zA-Z0-9_]+):(\d+)>/g, (match, name, id) => {
-    return `<img src="https://cdn.discordapp.com/emojis/${id}.png" alt="${name}" style="width:20px;height:20px;vertical-align:middle;" />`;
-  });
-
-  // Convert Discord relative timestamps <t:...:R> to local time string
+  stockData = stockData.replace(/<:([a-zA-Z0-9_]+):(\d+)>/g, (match, name, id) =>
+    `<img src="https://cdn.discordapp.com/emojis/${id}.png" alt="${name}" style="width:20px;height:20px;vertical-align:middle;" />`
+  );
   stockData = stockData.replace(/<t:(\d+):R>/g, (match, ts) => {
     const date = new Date(parseInt(ts, 10) * 1000);
     return date.toLocaleTimeString();
   });
-
-  // Convert markdown bold
   stockData = stockData.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
 
   return {
     id: m.id,
     author: m.author?.username || "Unknown",
     content: stockData,
-    createdAt: m.createdTimestamp, // epoch ms
+    createdAt: m.createdTimestamp,
   };
-};
+}
 
-// When bot is ready
+// Discord ready + initial fetch
 client.once("ready", async () => {
   console.log(`🤖 Logged in as ${client.user.tag}`);
-
   try {
     if (!CHANNEL_ID) {
-      console.warn("CHANNEL_ID not set — bot will not fetch initial messages.");
+      console.warn("⚠️ CHANNEL_ID not set — initial fetch skipped.");
       return;
     }
-
     const channel = await client.channels.fetch(CHANNEL_ID);
     if (!channel) {
       console.error("❌ Could not fetch channel.");
       return;
     }
-
-    // Fetch last 2 messages
     const messages = await channel.messages.fetch({ limit: 2 });
-    const latestMessages = messages.map(processMessage).sort((a, b) => a.createdAt - b.createdAt);
-
-    console.log("✅ Initial messages fetched");
-
-    // Send initial messages (so UI sees something immediately)
-    for (const msg of latestMessages) {
-      // POST each initial message (this is fine, Next.js will buffer)
-      postToNext(msg);
-    }
+    const latest = messages.map(processMessage).sort((a, b) => a.createdAt - b.createdAt);
+    // Broadcast initial messages
+    clients.forEach((res) => {
+      res.write(`data: ${JSON.stringify(latest)}\n\n`);
+    });
+    console.log("✅ Initial messages broadcasted");
   } catch (err) {
     console.error("❌ Error fetching messages:", err);
   }
 });
 
+// When new messages arrive
 client.on("messageCreate", async (message) => {
   try {
-        console.log(10)
-
-    // skip bots and unrelated channels
     if (message.author?.bot) return;
     if (CHANNEL_ID && message.channel?.id !== CHANNEL_ID) return;
-
     const processed = processMessage(message);
     console.log("📨 New stock message:", processed);
 
-    // Push to Next.js UI
-    await postToNext({
-      id: processed.id,
-      author: processed.author,
-      content: processed.content,
-      createdAt: processed.createdAt,
+    // Broadcast to SSE clients
+    const payload = JSON.stringify([processed]); // you may send whole buffer if you keep one
+    clients.forEach((res) => {
+      try { res.write(`data: ${payload}\n\n`); } catch (e) { /* ignore closed */ }
     });
-    console.log(postToNext,"podttonext")
   } catch (err) {
-    console.error("Error handling messageCreate:", err);
+    console.error("Error in messageCreate:", err);
   }
-});    console.log(11)
+});
 
-
-client.login(process.env.DISCORD_TOKEN).catch((err) => {
+client.login(DISCORD_TOKEN).catch((err) => {
   console.error("Failed to login:", err);
   process.exit(1);
 });
+
+// === SSE HTTP server ===
+const server = createServer((req, res) => {
+  if (req.url === "/api/live-stock") {
+    // Required SSE headers
+    res.writeHead(200, {
+      "Content-Type": "text/event-stream",
+      "Cache-Control": "no-cache, no-transform",
+      Connection: "keep-alive",
+      // Allow your front-end origin if you want restrict; "*" is easiest
+      "Access-Control-Allow-Origin": "*",
+    });
+
+    // send a comment to keep connection alive
+    res.write(":connected\n\n");
+
+    clients.add(res);
+    console.log("🌐 SSE client connected — total:", clients.size);
+
+    req.on("close", () => {
+      clients.delete(res);
+      console.log("❌ SSE client disconnected — total:", clients.size);
+    });
+  } else if (req.method === "OPTIONS") {
+    // CORS preflight
+    res.writeHead(204, {
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Methods": "GET,OPTIONS",
+      "Access-Control-Allow-Headers": "Content-Type",
+    });
+    res.end();
+  } else {
+    res.writeHead(404);
+    res.end();
+  }
+});
+
+server.listen(PORT, () => console.log(`📡 SSE server running on port ${PORT}`));
+
 
 // import { createServer } from "http";
 // import { Client, GatewayIntentBits } from "discord.js";

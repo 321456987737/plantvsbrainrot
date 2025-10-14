@@ -1,163 +1,61 @@
-// app/discord/page.js
 "use client";
+import { useEffect, useState } from "react";
 
-import { useEffect, useState, useRef } from "react";
-
-export default function LiveStocks() {
+export default function LiveStocksSSE() {
   const [messages, setMessages] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const backoffRef = useRef(3000);
-  const timerRef = useRef(null);
-
-  const fetchMessages = async () => {
-    try {
-      const res = await fetch("/api/discord");
-      console.log(res,"res")
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
-      if (data.success) {
-        setMessages(data.messages || []);
-        setLoading(false);
-        backoffRef.current = 3000;
-      } else {
-        throw new Error(data.error || "Unknown");
-      }
-    } catch (err) {
-      console.error("Failed to fetch messages:", err);
-      backoffRef.current = Math.min(backoffRef.current * 1.8, 30000);
-    } finally {
-      clearTimeout(timerRef.current);
-      timerRef.current = setTimeout(fetchMessages, backoffRef.current);
-    }
-  };
 
   useEffect(() => {
-    fetchMessages();
-    return () => clearTimeout(timerRef.current);
-  }, []);
+    // change to your render bot public URL
+    const BOT_SSE_URL =" https://plantvsbrainrot-rho.vercel.app/";
+    const es = new EventSource(BOT_SSE_URL);
 
-  const parseItems = (htmlContent) => {
-    if (!htmlContent) return { seeds: [], gear: [] };
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(htmlContent, "text/html");
-    const sections = {};
-
-    const extractSection = (name) => {
-      const header = Array.from(doc.querySelectorAll("strong")).find(
-        (el) => el.textContent === name
-      );
-      if (!header) return [];
-      const items = [];
-      let el = header.nextElementSibling;
-      while (el && el.tagName !== "STRONG") {
-        if (el.tagName === "IMG") {
-          items.push({
-            img: el.src,
-            name: el.alt,
-            quantity: el.nextSibling?.textContent?.trim() || "",
-          });
-        } else if (el.tagName === "DIV") {
-          el.querySelectorAll("img").forEach((i) =>
-            items.push({
-              img: i.src,
-              name: i.alt,
-              quantity: i.nextSibling?.textContent?.trim() || "",
-            })
-          );
-        }
-        el = el.nextElementSibling;
+    es.onmessage = (e) => {
+      try {
+        const payload = JSON.parse(e.data); // payload is an array
+        // merge into state: append new messages (assume payload is array of messages)
+        setMessages((prev) => {
+          // simplistic merge — you may dedupe by id
+          const combined = [...prev, ...payload];
+          // keep last N and dedupe by id
+          const map = new Map();
+          for (let i = combined.length - 1; i >= 0; i--) {
+            const m = combined[i];
+            if (!map.has(m.id)) map.set(m.id, m);
+          }
+          // map now has newest first, convert to array oldest->newest
+          const arr = Array.from(map.values()).reverse();
+          return arr.slice(-50);
+        });
+      } catch (err) {
+        console.error("Failed parse SSE data:", err);
       }
-      return items;
     };
 
-    sections.seeds = extractSection("Seeds");
-    sections.gear = extractSection("Gear");
-    return sections;
-  };
+    es.onerror = (err) => {
+      console.error("SSE error:", err);
+      // EventSource will try to reconnect automatically. You can add logic to fallback to polling.
+    };
 
-  // Sort by createdAt
-  const sorted = [...messages].sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
-  const current = sorted.length > 0 ? sorted[sorted.length - 1] : null;
-  const past = sorted.slice(0, Math.max(0, sorted.length - 1));
+    return () => es.close();
+  }, []);
 
-  const renderStockCard = (stock, type) => {
-    const sections = parseItems(stock.content);
-    const cardClass =
-      type === "current"
-        ? "bg-white shadow-lg border-l-4 border-green-500"
-        : "bg-gray-50 shadow-sm border-l-4 border-gray-300";
-
-    return (
-      <div key={stock.id || stock.createdAt} className={`${cardClass} rounded-lg p-4 mb-4 transition-all`}>
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-3">
-            <img src="https://cdn-icons-png.flaticon.com/512/616/616408.png" alt="Bot Logo" className="w-10 h-10 rounded-full" />
-            <p className="font-semibold text-gray-700">{stock.author}</p>
-          </div>
-          <small className="text-gray-500">{stock.createdAt ? new Date(stock.createdAt).toLocaleTimeString() : ""}</small>
-        </div>
-
-        {sections.seeds?.length > 0 && (
-          <div className="mb-3">
-            <h3 className="text-green-600 font-semibold mb-2">Seeds</h3>
-            {sections.seeds.map((item, i) => (
-              <div key={i} className="flex items-center justify-start gap-4 mb-1 border-b-2 border-gray-200 pb-1">
-                <div className="flex items-center gap-2">
-                  <img src={item.img} alt={item.name} className="w-6 h-6" />
-                </div>
-                <span className="font-semibold">{item.quantity}</span>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {sections.gear?.length > 0 && (
-          <div>
-            <h3 className="text-blue-600 font-semibold mb-2">Gear</h3>
-            {sections.gear.map((item, i) => (
-              <div key={i} className="flex items-center justify-start gap-4 mb-1 border-b-2 border-gray-200 pb-1">
-                <div className="flex items-center gap-2">
-                  <img src={item.img} alt={item.name} className="w-6 h-6" />
-                </div>
-                <span className="font-semibold">{item.quantity}</span>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-    );
-  };
-
+  // reuse your renderStockCard and parseItems functions...
   return (
-    <div className="max-w-5xl mx-auto sm:p-4">
-      <div className="flex items-center justify-between pb-6">
-        <h1 className="sm:text-3xl text-2xl font-bold text-center">Live Stocks Dashboard</h1>
-        <button
-          onClick={() => { backoffRef.current = 3000; fetchMessages(); }}
-          className="bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded cursor-pointer"
-        >
-          Refresh
-        </button>
-      </div>
-
-      {loading && <p className="text-center text-gray-500">Loading…</p>}
-
-      {current && (
-        <>
-          <h2 className="text-xl font-semibold mb-2 text-green-600">Current Stock</h2>
-          {renderStockCard(current, "current")}
-        </>
-      )}
-
-      {past.length > 0 && (
-        <>
-          <h2 className="text-xl font-semibold mb-2 text-gray-600">Past Stocks</h2>
-          {past.map((s) => renderStockCard(s, "past"))}
-        </>
-      )}
+    <div className="max-w-5xl mx-auto p-4">
+      <h1 className="text-2xl font-bold mb-4">Live Stocks (SSE)</h1>
+      {messages.map((m) => (
+        <div key={m.id || m.createdAt} className="p-3 border rounded mb-3">
+          <div className="flex justify-between">
+            <strong>{m.author}</strong>
+            <small>{new Date(m.createdAt).toLocaleString()}</small>
+          </div>
+          <div dangerouslySetInnerHTML={{ __html: m.content }} />
+        </div>
+      ))}
     </div>
   );
 }
+
 
 // "use client";
 // import { useEffect, useState } from "react";
