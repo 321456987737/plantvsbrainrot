@@ -134,6 +134,7 @@ client.on("messageCreate", async (message) => {
       content: processed.content,
       createdAt: processed.createdAt,
     });
+    console.log(postToNext,"podttonext")
   } catch (err) {
     console.error("Error handling messageCreate:", err);
   }
