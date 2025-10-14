@@ -85,7 +85,7 @@ const processMessage = (m) => {
 };
 
 // When bot is ready
-client.once("ready", async () => {
+client.once("clientReady ", async () => {
   console.log(`🤖 Logged in as ${client.user.tag}`);
 
   try {
@@ -103,7 +103,7 @@ client.once("ready", async () => {
     // Fetch last 2 messages
     const messages = await channel.messages.fetch({ limit: 2 });
     const latestMessages = messages.map(processMessage).sort((a, b) => a.createdAt - b.createdAt);
-
+    console.log(latestMessages,"latest mesagea")
     console.log("✅ Initial messages fetched");
 
     // Send initial messages (so UI sees something immediately)
