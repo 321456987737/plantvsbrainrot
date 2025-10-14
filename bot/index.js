@@ -1,9 +1,17 @@
-import { createServer } from "http";
+// bot/index.js
 import { Client, GatewayIntentBits } from "discord.js";
 import dotenv from "dotenv";
 dotenv.config();
 
-// === Discord Client ===
+const NEXT_API_URL = process.env.NEXT_API_URL; // e.g. "https://plantvsbrainrot-rho.vercel.app"
+const POST_SECRET = process.env.DISCORD_POST_SECRET; // shared secret with Next.js
+const CHANNEL_ID = process.env.CHANNEL_ID;
+
+if (!process.env.DISCORD_TOKEN) {
+  console.error("DISCORD_TOKEN not set. Exiting.");
+  process.exit(1);
+}
+
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
@@ -12,15 +20,33 @@ const client = new Client({
   ],
 });
 
-const CHANNEL_ID = process.env.CHANNEL_ID;
-let latestMessages = [];
+// small helper to POST to Next.js
+async function postToNext(payload) {
+  if (!NEXT_API_URL || !POST_SECRET) return;
+  try {
+    // Node 18+/22 has global fetch; this will also work on Render
+    console.log(1)
+    await fetch(`${NEXT_API_URL}/api/discord`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-bot-secret": POST_SECRET,
+      },
+      body: JSON.stringify(payload),
+    });
+  } catch (err) {
+    console.error("Failed to POST to Next.js:", err?.message || err);
+  }
+}
 
 // === Helper: process messages, embeds, emojis, timestamps ===
 const processMessage = (m) => {
   let stockData = m.content || "";
 
   // Handle embeds
-  if (m.embeds.length > 0) {
+      console.log(2)
+
+  if (m.embeds && m.embeds.length > 0) {
     stockData = m.embeds
       .map((e) => {
         let desc = e.description ?? "";
@@ -34,15 +60,16 @@ const processMessage = (m) => {
       })
       .join("\n");
   }
+    console.log(3)
 
   // Convert custom Discord emojis to <img>
   stockData = stockData.replace(/<:([a-zA-Z0-9_]+):(\d+)>/g, (match, name, id) => {
     return `<img src="https://cdn.discordapp.com/emojis/${id}.png" alt="${name}" style="width:20px;height:20px;vertical-align:middle;" />`;
   });
 
-  // Convert Discord relative timestamps <t:...:R>
+  // Convert Discord relative timestamps <t:...:R> to local time string
   stockData = stockData.replace(/<t:(\d+):R>/g, (match, ts) => {
-    const date = new Date(parseInt(ts) * 1000);
+    const date = new Date(parseInt(ts, 10) * 1000);
     return date.toLocaleTimeString();
   });
 
@@ -50,83 +77,74 @@ const processMessage = (m) => {
   stockData = stockData.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
 
   return {
-    author: m.author.username,
+    id: m.id,
+    author: m.author?.username || "Unknown",
     content: stockData,
-    timestamp: m.createdTimestamp,
+    createdAt: m.createdTimestamp, // epoch ms
   };
 };
 
-// === Discord Bot Ready ===
-client.once("clientReady", async () => {
+// When bot is ready
+client.once("ready", async () => {
   console.log(`🤖 Logged in as ${client.user.tag}`);
 
   try {
-    const channel = await client.channels.fetch(CHANNEL_ID);
-    if (!channel) return console.error("❌ Could not fetch channel.");
+    if (!CHANNEL_ID) {
+      console.warn("CHANNEL_ID not set — bot will not fetch initial messages.");
+      return;
+    }
 
-    // Fetch last 2 messages for past + current
+    const channel = await client.channels.fetch(CHANNEL_ID);
+    if (!channel) {
+      console.error("❌ Could not fetch channel.");
+      return;
+    }
+
+    // Fetch last 2 messages
     const messages = await channel.messages.fetch({ limit: 2 });
-    latestMessages = messages.map(processMessage).sort((a, b) => a.timestamp - b.timestamp);
+    const latestMessages = messages.map(processMessage).sort((a, b) => a.createdAt - b.createdAt);
 
     console.log("✅ Initial messages fetched");
 
-    // Listen for new messages
-    client.on("messageCreate", (message) => {
-      if (message.channel.id !== CHANNEL_ID) return;
-
-      const processed = processMessage(message);
-      latestMessages.push(processed);
-
-      // Keep only last 2 messages
-      if (latestMessages.length > 2) latestMessages.shift();
-
-      console.log("📨 New stock message:", processed);
-
-      // Send latest messages to all SSE clients
-      clients.forEach((res) => {
-        res.write(`data: ${JSON.stringify(latestMessages)}\n\n`);
-      });
-    });
+    // Send initial messages (so UI sees something immediately)
+    for (const msg of latestMessages) {
+      // POST each initial message (this is fine, Next.js will buffer)
+      postToNext(msg);
+    }
   } catch (err) {
     console.error("❌ Error fetching messages:", err);
   }
 });
 
-client.login(process.env.DISCORD_TOKEN);
+client.on("messageCreate", async (message) => {
+  try {
+        console.log(10)
 
-// === SSE Server ===
-const clients = new Set();
+    // skip bots and unrelated channels
+    if (message.author?.bot) return;
+    if (CHANNEL_ID && message.channel?.id !== CHANNEL_ID) return;
 
-const server = createServer((req, res) => {
-  if (req.url === "/api/live-stock") {
-    console.log("🌐 Client connected");
+    const processed = processMessage(message);
+    console.log("📨 New stock message:", processed);
 
-    res.writeHead(200, {
-      "Content-Type": "text/event-stream",
-      "Cache-Control": "no-cache",
-      Connection: "keep-alive",
-      "Access-Control-Allow-Origin": "*",
+    // Push to Next.js UI
+    await postToNext({
+      id: processed.id,
+      author: processed.author,
+      content: processed.content,
+      createdAt: processed.createdAt,
     });
-
-    clients.add(res);
-
-    // Send initial latest messages
-    res.write(`data: ${JSON.stringify(latestMessages)}\n\n`);
-
-    req.on("close", () => {
-      clients.delete(res);
-      console.log("❌ Client disconnected");
-    });
-  } else {
-    res.writeHead(404);
-    res.end();
+  } catch (err) {
+    console.error("Error handling messageCreate:", err);
   }
+});    console.log(11)
+
+
+client.login(process.env.DISCORD_TOKEN).catch((err) => {
+  console.error("Failed to login:", err);
+  process.exit(1);
 });
 
-server.listen(5000, () => console.log("📡 SSE server running on port 5000"));
-
-
-// // bot/index.js
 // import { createServer } from "http";
 // import { Client, GatewayIntentBits } from "discord.js";
 // import dotenv from "dotenv";
@@ -169,7 +187,7 @@ server.listen(5000, () => console.log("📡 SSE server running on port 5000"));
 //     return `<img src="https://cdn.discordapp.com/emojis/${id}.png" alt="${name}" style="width:20px;height:20px;vertical-align:middle;" />`;
 //   });
 
-//   // Convert Discord relative timestamps <t:1760359505:R>
+//   // Convert Discord relative timestamps <t:...:R>
 //   stockData = stockData.replace(/<t:(\d+):R>/g, (match, ts) => {
 //     const date = new Date(parseInt(ts) * 1000);
 //     return date.toLocaleTimeString();
@@ -191,36 +209,33 @@ server.listen(5000, () => console.log("📡 SSE server running on port 5000"));
 
 //   try {
 //     const channel = await client.channels.fetch(CHANNEL_ID);
-//     if (!channel) {
-//       console.error("❌ Could not fetch channel. Check CHANNEL_ID in .env");
-//       return;
-//     }
-//     console.log(`📡 Listening to messages in: ${channel.name} (${channel.id})`);
+//     if (!channel) return console.error("❌ Could not fetch channel.");
 
-//     const fetchMessages = async () => {
-//       try {
-//         const messages = await channel.messages.fetch({ limit: 2 });
-//         if (!messages.size) {
-//           console.warn("⚠️ No messages found in channel yet.");
-//           return;
-//         }
+//     // Fetch last 2 messages for past + current
+//     const messages = await channel.messages.fetch({ limit: 2 });
+//     latestMessages = messages.map(processMessage).sort((a, b) => a.timestamp - b.timestamp);
 
-//         latestMessages = messages.map(processMessage);
+//     console.log("✅ Initial messages fetched");
 
-//         console.log("✅ Latest messages fetched:");
-//         latestMessages.forEach((m) => console.log(m.author, "-", m.timestamp));
-//       } catch (err) {
-//         console.error("❌ Error fetching messages:", err);
-//       }
-//     };
+//     // Listen for new messages
+//     client.on("messageCreate", (message) => {
+//       if (message.channel.id !== CHANNEL_ID) return;
 
-//     // Initial fetch
-//     await fetchMessages();
+//       const processed = processMessage(message);
+//       latestMessages.push(processed);
 
-//     // Repeat every 50 seconds
-//     setInterval(fetchMessages, 300000 );
+//       // Keep only last 2 messages
+//       if (latestMessages.length > 2) latestMessages.shift();
+
+//       console.log("📨 New stock message:", processed);
+
+//       // Send latest messages to all SSE clients
+//       clients.forEach((res) => {
+//         res.write(`data: ${JSON.stringify(latestMessages)}\n\n`);
+//       });
+//     });
 //   } catch (err) {
-//     console.error("❌ Error fetching channel:", err);
+//     console.error("❌ Error fetching messages:", err);
 //   }
 // });
 
@@ -231,32 +246,23 @@ server.listen(5000, () => console.log("📡 SSE server running on port 5000"));
 
 // const server = createServer((req, res) => {
 //   if (req.url === "/api/live-stock") {
-//     console.log("🌐 Client connected to SSE endpoint");
+//     console.log("🌐 Client connected");
 
-//    //  res.writeHead(200, {
-//    //    "Content-Type": "text/event-stream",
-//    //    "Cache-Control": "no-cache",
-//    //    Connection: "keep-alive",
-//    //  });
-// res.writeHead(200, {
-//   "Content-Type": "text/event-stream",
-//   "Cache-Control": "no-cache",
-//   Connection: "keep-alive",
-//   "Access-Control-Allow-Origin": "*", // allow requests from any origin
-// });
+//     res.writeHead(200, {
+//       "Content-Type": "text/event-stream",
+//       "Cache-Control": "no-cache",
+//       Connection: "keep-alive",
+//       "Access-Control-Allow-Origin": "*",
+//     });
+
 //     clients.add(res);
 
-//     // Send initial data
+//     // Send initial latest messages
 //     res.write(`data: ${JSON.stringify(latestMessages)}\n\n`);
 
-//     const interval = setInterval(() => {
-//       res.write(`data: ${JSON.stringify(latestMessages)}\n\n`);
-//     }, 300000 );
-
 //     req.on("close", () => {
-//       clearInterval(interval);
 //       clients.delete(res);
-//       console.log("❌ Client disconnected from SSE");
+//       console.log("❌ Client disconnected");
 //     });
 //   } else {
 //     res.writeHead(404);
@@ -265,138 +271,4 @@ server.listen(5000, () => console.log("📡 SSE server running on port 5000"));
 // });
 
 // server.listen(5000, () => console.log("📡 SSE server running on port 5000"));
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-// // bot/index.js
-// import { createServer } from "http";
-// import { Client, GatewayIntentBits } from "discord.js";
-// import dotenv from "dotenv";
-// dotenv.config();
-
-// // === Discord Client ===
-// const client = new Client({
-//   intents: [
-//     GatewayIntentBits.Guilds,
-//     GatewayIntentBits.GuildMessages,
-//     GatewayIntentBits.MessageContent,
-//   ],
-// });
-
-// const CHANNEL_ID = process.env.CHANNEL_ID;
-// let latestMessages = [];
-
-// // Helper function to process messages including embeds
-// const processMessage = (m) => {
-//   let stockData = m.content || "";
-
-//   if (m.embeds.length > 0) {
-//     stockData = m.embeds
-//       .map((e) => {
-//         let desc = e.description ?? "";
-//         if (e.fields?.length) {
-//           desc += "\n" + e.fields.map((f) => `${f.name}: ${f.value}`).join("\n");
-//         }
-//         if (e.title) {
-//           desc = `${e.title}\n${desc}`;
-//         }
-//         return desc;
-//       })
-//       .join("\n");
-//   }
-
-//   return {
-//     author: m.author.username,
-//     content: stockData,
-//     timestamp: m.createdTimestamp,
-//   };
-// };
-
-// // === Discord Bot Ready ===
-// client.once("clientReady", async () => {
-//   console.log(`🤖 Logged in as ${client.user.tag}`);
-
-//   try {
-//     const channel = await client.channels.fetch(CHANNEL_ID);
-//     if (!channel) {
-//       console.error("❌ Could not fetch channel. Check CHANNEL_ID in .env");
-//       return;
-//     }
-//     console.log(`📡 Listening to messages in: ${channel.name} (${channel.id})`);
-
-//     const fetchMessages = async () => {
-//       try {
-//         const messages = await channel.messages.fetch({ limit: 10 });
-//         if (!messages.size) {
-//           console.warn("⚠️ No messages found in channel yet.");
-//           return;
-//         }
-
-//         latestMessages = messages.map(processMessage);
-
-//         console.log("✅ Latest messages fetched:");
-//         console.log(latestMessages);
-//       } catch (err) {
-//         console.error("❌ Error fetching messages:", err);
-//       }
-//     };
-
-//     // Initial fetch
-//     await fetchMessages();
-
-//     // Repeat every 5 seconds
-//     setInterval(fetchMessages, 50000);
-//   } catch (err) {
-//     console.error("❌ Error fetching channel:", err);
-//   }
-// });
-
-// client.login(process.env.DISCORD_TOKEN);
-
-// // === SSE Server ===
-// const clients = new Set();
-
-// const server = createServer((req, res) => {
-//   if (req.url === "/api/live-stock") {
-//     console.log("🌐 Client connected to SSE endpoint");
-
-//     res.writeHead(200, {
-//       "Content-Type": "text/event-stream",
-//       "Cache-Control": "no-cache",
-//       Connection: "keep-alive",
-//     });
-
-//     clients.add(res);
-
-//     // Send initial data
-//     res.write(`data: ${JSON.stringify(latestMessages)}\n\n`);
-
-//     const interval = setInterval(() => {
-//       res.write(`data: ${JSON.stringify(latestMessages)}\n\n`);
-//     }, 5000);
-
-//     req.on("close", () => {
-//       clearInterval(interval);
-//       clients.delete(res);
-//       console.log("❌ Client disconnected from SSE");
-//     });
-//   }
-// });
-
-// server.listen(5000, () => console.log("📡 SSE server running on port 5000"));
-
-
-
 

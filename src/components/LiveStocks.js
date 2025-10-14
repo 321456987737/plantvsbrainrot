@@ -12,6 +12,7 @@ export default function LiveStocks() {
   const fetchMessages = async () => {
     try {
       const res = await fetch("/api/discord");
+      console.log(res,"res")
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       if (data.success) {

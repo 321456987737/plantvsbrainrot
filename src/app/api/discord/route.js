@@ -21,7 +21,7 @@ export async function POST(req) {
   if (!SECRET || header !== SECRET) {
     return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
   }
-
+  console.log(header,"header")
   let body;
   try {
     body = await req.json();
@@ -40,7 +40,7 @@ export async function POST(req) {
     createdAt: typeof body.createdAt === "string" ? Number(body.createdAt) : body.createdAt,
     receivedAt: Date.now(),
   };
-
+  console.log(msg,"msg")
   // push to front and cap size
   memoryBuffer.unshift(msg);
   if (memoryBuffer.length > MAX_BUFFER) memoryBuffer.length = MAX_BUFFER;
@@ -56,3 +56,4 @@ export async function GET(req) {
   const copy = [...memoryBuffer].slice(0, 50).reverse();
   return NextResponse.json({ success: true, messages: copy }, { status: 200 });
 }
+
