@@ -121,7 +121,7 @@ client.on("messageCreate", async (message) => {
         console.log(10)
 
     // skip bots and unrelated channels
-    if (message.author?.bot) return;
+    // if (message.author?.bot) return;
     if (CHANNEL_ID && message.channel?.id !== CHANNEL_ID) return;
 
     const processed = processMessage(message);
