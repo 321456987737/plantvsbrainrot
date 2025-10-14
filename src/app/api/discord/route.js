@@ -66,6 +66,8 @@ export async function POST(req) {
   // Broadcast to all connected clients
   broadcastToClients({ type: "NEW_MESSAGE", message: msg });
 
+  console.log("✅ Message added to buffer:", msg);
+
   return NextResponse.json({ success: true }, { status: 200 });
 }
 
@@ -84,6 +86,8 @@ export async function GET(req) {
 
         // Send only the latest 2 messages
         const initialMessages = [...memoryBuffer].slice(0, 2).reverse();
+        console.log("📡 Sending initial 2 messages (SSE):", initialMessages);
+
         controller.enqueue(`data: ${JSON.stringify({
           type: "INITIAL_DATA",
           messages: initialMessages,
@@ -107,6 +111,8 @@ export async function GET(req) {
 
   // Regular GET fallback (returns latest 2 messages)
   const copy = [...memoryBuffer].slice(0, 2).reverse();
+  console.log("📡 Sending latest 2 messages (GET):", copy);
+
   return NextResponse.json({ success: true, messages: copy });
 }
 
