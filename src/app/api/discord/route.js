@@ -1,31 +1,36 @@
 // app/api/discord/route.js
+import { NextResponse } from "next/server";
+
 const MAX_BUFFER = 200;
-const memoryBuffer = global.__DISCORD_MEMORY_BUFFER ||= [];
+globalThis.__DISCORD_MEMORY_BUFFER = globalThis.__DISCORD_MEMORY_BUFFER || [];
+const memoryBuffer = globalThis.__DISCORD_MEMORY_BUFFER;
 const SECRET = process.env.DISCORD_POST_SECRET || "";
 
 function validateMessage(body) {
   if (!body) return false;
-  return typeof body.id === "string" &&
-         typeof body.author === "string" &&
-         (typeof body.content === "string" || typeof body.content === "object") &&
-         (typeof body.createdAt === "number" || typeof body.createdAt === "string");
+  return (
+    typeof body.id === "string" &&
+    typeof body.author === "string" &&
+    (typeof body.content === "string" || typeof body.content === "object") &&
+    (typeof body.createdAt === "number" || typeof body.createdAt === "string")
+  );
 }
 
 export async function POST(req) {
   const header = req.headers.get("x-bot-secret") || "";
   if (!SECRET || header !== SECRET) {
-    return new Response(JSON.stringify({ success: false, error: "Unauthorized" }), { status: 401 });
+    return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
   }
 
   let body;
   try {
     body = await req.json();
   } catch (err) {
-    return new Response(JSON.stringify({ success: false, error: "Invalid JSON" }), { status: 400 });
+    return NextResponse.json({ success: false, error: "Invalid JSON" }, { status: 400 });
   }
 
   if (!validateMessage(body)) {
-    return new Response(JSON.stringify({ success: false, error: "Invalid message shape" }), { status: 400 });
+    return NextResponse.json({ success: false, error: "Invalid message shape" }, { status: 400 });
   }
 
   const msg = {
@@ -33,17 +38,21 @@ export async function POST(req) {
     author: body.author,
     content: body.content,
     createdAt: typeof body.createdAt === "string" ? Number(body.createdAt) : body.createdAt,
-    receivedAt: Date.now()
+    receivedAt: Date.now(),
   };
 
+  // push to front and cap size
   memoryBuffer.unshift(msg);
   if (memoryBuffer.length > MAX_BUFFER) memoryBuffer.length = MAX_BUFFER;
 
-  return new Response(JSON.stringify({ success: true }), { status: 200 });
+  // debug log visible in Vercel logs
+  console.log("POST /api/discord received:", msg.id, msg.author);
+
+  return NextResponse.json({ success: true }, { status: 200 });
 }
 
-export async function GET() {
+export async function GET(req) {
   // return messages oldest -> newest
-  const copy = [...memoryBuffer].slice().reverse();
-  return new Response(JSON.stringify({ success: true, messages: copy }), { status: 200 });
+  const copy = [...memoryBuffer].slice(0, 50).reverse();
+  return NextResponse.json({ success: true, messages: copy }, { status: 200 });
 }
