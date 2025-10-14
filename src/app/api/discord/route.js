@@ -4,14 +4,15 @@ import { NextResponse } from "next/server";
 const MAX_BUFFER = 200;
 const SECRET = process.env.DISCORD_POST_SECRET || "";
 
-// Use a global in-memory buffer (survives hot reloads in dev)
+// Use a global in-memory buffer and client connections
 globalThis.__DISCORD_MEMORY_BUFFER = globalThis.__DISCORD_MEMORY_BUFFER || [];
+globalThis.__DISCORD_CLIENTS = globalThis.__DISCORD_CLIENTS || [];
+
 const memoryBuffer = globalThis.__DISCORD_MEMORY_BUFFER;
 
 // === Helper: Validate message shape ===
 function validateMessage(body) {
   if (!body) return false;
-
   return (
     typeof body.id === "string" &&
     typeof body.author === "string" &&
@@ -20,19 +21,27 @@ function validateMessage(body) {
   );
 }
 
+// === Helper: Broadcast to all connected clients ===
+function broadcastToClients(message) {
+  globalThis.__DISCORD_CLIENTS.forEach((client) => {
+    try {
+      client.controller.enqueue(`data: ${JSON.stringify(message)}\n\n`);
+    } catch (error) {
+      console.error("Error sending to client:", error);
+    }
+  });
+}
+
 // === POST: Receive new messages from Discord bot ===
 export async function POST(req) {
   const header = req.headers.get("x-bot-secret") || "";
 
-  // Validate shared secret
   if (!SECRET || header !== SECRET) {
     return NextResponse.json(
       { success: false, error: "Unauthorized" },
       { status: 401 }
     );
   }
-
-  console.log(header, "header");
 
   let body;
   try {
@@ -55,31 +64,144 @@ export async function POST(req) {
     id: body.id,
     author: body.author,
     content: body.content,
-    createdAt:
-      typeof body.createdAt === "string"
-        ? Number(body.createdAt)
-        : body.createdAt,
+    createdAt: typeof body.createdAt === "string" ? Number(body.createdAt) : body.createdAt,
     receivedAt: Date.now(),
   };
-
-  console.log(msg, "msg");
 
   // Push to front and cap memory buffer size
   memoryBuffer.unshift(msg);
   if (memoryBuffer.length > MAX_BUFFER) memoryBuffer.length = MAX_BUFFER;
 
-  console.log("POST /api/discord received:", msg.id, msg.author);
+  // Broadcast to all connected clients
+  broadcastToClients({
+    type: "NEW_MESSAGE",
+    message: msg
+  });
 
   return NextResponse.json({ success: true }, { status: 200 });
 }
 
-// === GET: Return latest messages for frontend ===
-export async function GET() {
-  // Return up to 50 messages (oldest → newest)
-  const copy = [...memoryBuffer].slice(0, 50).reverse();
+// === GET: Server-Sent Events endpoint for real-time updates ===
+export async function GET(req) {
+  // Check if this is an SSE request
+  const url = new URL(req.url);
+  if (url.searchParams.get('stream') === 'true') {
+    const stream = new ReadableStream({
+      start(controller) {
+        // Add client to the list
+        const client = { controller };
+        globalThis.__DISCORD_CLIENTS.push(client);
 
-  return NextResponse.json(
-    { success: true, messages: copy },
-    { status: 200 }
-  );
+        // Send initial data
+        const initialMessages = [...memoryBuffer].slice(0, 50).reverse();
+        controller.enqueue(`data: ${JSON.stringify({
+          type: "INITIAL_DATA",
+          messages: initialMessages
+        })}\n\n`);
+
+        // Remove client when connection closes
+        req.signal.addEventListener('abort', () => {
+          globalThis.__DISCORD_CLIENTS = globalThis.__DISCORD_CLIENTS.filter(c => c !== client);
+        });
+      },
+    });
+
+    return new Response(stream, {
+      headers: {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive',
+      },
+    });
+  }
+
+  // Regular GET request (fallback)
+  const copy = [...memoryBuffer].slice(0, 50).reverse();
+  return NextResponse.json({ success: true, messages: copy });
 }
+
+// import { NextResponse } from "next/server";
+
+// // === Configuration ===
+// const MAX_BUFFER = 200;
+// const SECRET = process.env.DISCORD_POST_SECRET || "";
+
+// // Use a global in-memory buffer (survives hot reloads in dev)
+// globalThis.__DISCORD_MEMORY_BUFFER = globalThis.__DISCORD_MEMORY_BUFFER || [];
+// const memoryBuffer = globalThis.__DISCORD_MEMORY_BUFFER;
+
+// // === Helper: Validate message shape ===
+// function validateMessage(body) {
+//   if (!body) return false;
+
+//   return (
+//     typeof body.id === "string" &&
+//     typeof body.author === "string" &&
+//     (typeof body.content === "string" || typeof body.content === "object") &&
+//     (typeof body.createdAt === "number" || typeof body.createdAt === "string")
+//   );
+// }
+
+// // === POST: Receive new messages from Discord bot ===
+// export async function POST(req) {
+//   const header = req.headers.get("x-bot-secret") || "";
+
+//   // Validate shared secret
+//   if (!SECRET || header !== SECRET) {
+//     return NextResponse.json(
+//       { success: false, error: "Unauthorized" },
+//       { status: 401 }
+//     );
+//   }
+
+//   console.log(header, "header");
+
+//   let body;
+//   try {
+//     body = await req.json();
+//   } catch (err) {
+//     return NextResponse.json(
+//       { success: false, error: "Invalid JSON" },
+//       { status: 400 }
+//     );
+//   }
+
+//   if (!validateMessage(body)) {
+//     return NextResponse.json(
+//       { success: false, error: "Invalid message shape" },
+//       { status: 400 }
+//     );
+//   }
+
+//   const msg = {
+//     id: body.id,
+//     author: body.author,
+//     content: body.content,
+//     createdAt:
+//       typeof body.createdAt === "string"
+//         ? Number(body.createdAt)
+//         : body.createdAt,
+//     receivedAt: Date.now(),
+//   };
+
+//   console.log(msg, "msg");
+
+//   // Push to front and cap memory buffer size
+//   memoryBuffer.unshift(msg);
+//   if (memoryBuffer.length > MAX_BUFFER) memoryBuffer.length = MAX_BUFFER;
+
+//   console.log("POST /api/discord received:", msg.id, msg.author);
+
+//   return NextResponse.json({ success: true }, { status: 200 });
+// }
+
+// // === GET: Return latest messages for frontend ===
+// export async function GET() {
+//   // Return up to 50 messages (oldest → newest)
+//   const copy = [...memoryBuffer].slice(0, 50).reverse();
+
+//   return NextResponse.json(
+//     { success: true, messages: copy },
+//     { status: 200 }
+//   );
+// }
