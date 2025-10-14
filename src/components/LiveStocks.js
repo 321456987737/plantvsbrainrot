@@ -100,7 +100,7 @@ export default function LiveStocks() {
       }
       return items;
     };
-    
+      console.log(sections)
     sections.seeds = extractSection("Seeds");
     sections.gear = extractSection("Gear");
     return sections;
