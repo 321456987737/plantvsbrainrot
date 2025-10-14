@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 // === Configuration ===
-const MAX_BUFFER = 200;
+const MAX_BUFFER = 2; // keep only the latest 2 messages
 const SECRET = process.env.DISCORD_POST_SECRET || "";
 
 // Use a global in-memory buffer and client connections
@@ -59,14 +59,21 @@ export async function POST(req) {
     receivedAt: Date.now(),
   };
 
-  // Push to front and cap memory buffer size
+  // Push newest to front
   memoryBuffer.unshift(msg);
-  if (memoryBuffer.length > MAX_BUFFER) memoryBuffer.length = MAX_BUFFER;
 
-  // Broadcast to all connected clients
+  // Trim buffer to keep only the latest MAX_BUFFER messages (here MAX_BUFFER = 2)
+  if (memoryBuffer.length > MAX_BUFFER) {
+    // remove oldest entries
+    while (memoryBuffer.length > MAX_BUFFER) {
+      memoryBuffer.pop();
+    }
+  }
+
+  console.log("✅ Message added to buffer (trimmed to latest 2):", memoryBuffer);
+
+  // Broadcast to all connected clients (NEW_MESSAGE)
   broadcastToClients({ type: "NEW_MESSAGE", message: msg });
-
-  console.log("✅ Message added to buffer:", msg);
 
   return NextResponse.json({ success: true }, { status: 200 });
 }
@@ -85,13 +92,15 @@ export async function GET(req) {
         globalThis.__DISCORD_CLIENTS.push(client);
 
         // Send only the latest 2 messages
-        const initialMessages = [...memoryBuffer].slice(0, 2).reverse();
-        console.log("📡 Sending initial 2 messages (SSE):", initialMessages);
+        const initialMessages = [...memoryBuffer].slice(0, MAX_BUFFER).reverse();
+        console.log("📡 Sending initial messages (SSE):", initialMessages);
 
-        controller.enqueue(`data: ${JSON.stringify({
-          type: "INITIAL_DATA",
-          messages: initialMessages,
-        })}\n\n`);
+        controller.enqueue(
+          `data: ${JSON.stringify({
+            type: "INITIAL_DATA",
+            messages: initialMessages,
+          })}\n\n`
+        );
 
         req.signal.addEventListener("abort", () => {
           console.log("❌ SSE client disconnected");
@@ -109,12 +118,131 @@ export async function GET(req) {
     });
   }
 
-  // Regular GET fallback (returns latest 2 messages)
-  const copy = [...memoryBuffer].slice(0, 2).reverse();
-  console.log("📡 Sending latest 2 messages (GET):", copy);
+  // Regular GET fallback (returns latest MAX_BUFFER messages)
+  const copy = [...memoryBuffer].slice(0, MAX_BUFFER).reverse();
+  console.log("📡 Sending latest messages (GET):", copy);
 
   return NextResponse.json({ success: true, messages: copy });
 }
+
+
+// import { NextResponse } from "next/server";
+
+// // === Configuration ===
+// const MAX_BUFFER = 200;
+// const SECRET = process.env.DISCORD_POST_SECRET || "";
+
+// // Use a global in-memory buffer and client connections
+// globalThis.__DISCORD_MEMORY_BUFFER = globalThis.__DISCORD_MEMORY_BUFFER || [];
+// globalThis.__DISCORD_CLIENTS = globalThis.__DISCORD_CLIENTS || [];
+
+// const memoryBuffer = globalThis.__DISCORD_MEMORY_BUFFER;
+
+// // === Helper: Validate message shape ===
+// function validateMessage(body) {
+//   if (!body) return false;
+//   return (
+//     typeof body.id === "string" &&
+//     typeof body.author === "string" &&
+//     (typeof body.content === "string" || typeof body.content === "object") &&
+//     (typeof body.createdAt === "number" || typeof body.createdAt === "string")
+//   );
+// }
+
+// // === Helper: Broadcast to all connected clients ===
+// function broadcastToClients(message) {
+//   globalThis.__DISCORD_CLIENTS.forEach((client) => {
+//     try {
+//       client.controller.enqueue(`data: ${JSON.stringify(message)}\n\n`);
+//     } catch (error) {
+//       console.error("Error sending to client:", error);
+//     }
+//   });
+// }
+
+// // === POST: Receive new messages from Discord bot ===
+// export async function POST(req) {
+//   const header = req.headers.get("x-bot-secret") || "";
+//   if (!SECRET || header !== SECRET) {
+//     return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+//   }
+
+//   let body;
+//   try {
+//     body = await req.json();
+//     console.log("📩 [Next.js API] Received from bot:", body);
+//   } catch (err) {
+//     return NextResponse.json({ success: false, error: "Invalid JSON" }, { status: 400 });
+//   }
+
+//   if (!validateMessage(body)) {
+//     return NextResponse.json({ success: false, error: "Invalid message shape" }, { status: 400 });
+//   }
+
+//   const msg = {
+//     id: body.id,
+//     author: body.author,
+//     content: body.content,
+//     createdAt: typeof body.createdAt === "string" ? Number(body.createdAt) : body.createdAt,
+//     receivedAt: Date.now(),
+//   };
+
+//   // Push to front and cap memory buffer size
+//   memoryBuffer.unshift(msg);
+//   if (memoryBuffer.length > MAX_BUFFER) memoryBuffer.length = MAX_BUFFER;
+
+//   // Broadcast to all connected clients
+//   broadcastToClients({ type: "NEW_MESSAGE", message: msg });
+
+//   console.log("✅ Message added to buffer:", msg);
+
+//   return NextResponse.json({ success: true }, { status: 200 });
+// }
+
+// // === GET: Server-Sent Events endpoint for real-time updates ===
+// export async function GET(req) {
+//   const url = new URL(req.url);
+
+//   // Handle Server-Sent Events (live updates)
+//   if (url.searchParams.get("stream") === "true") {
+//     console.log("🔗 SSE connection opened");
+
+//     const stream = new ReadableStream({
+//       start(controller) {
+//         const client = { controller };
+//         globalThis.__DISCORD_CLIENTS.push(client);
+
+//         // Send only the latest 2 messages
+//         const initialMessages = [...memoryBuffer].slice(0, 2).trim().reverse();
+//         console.log("📡 Sending initial 2 messages (SSE):", initialMessages);
+
+//         controller.enqueue(`data: ${JSON.stringify({
+//           type: "INITIAL_DATA",
+//           messages: initialMessages,
+//         })}\n\n`);
+
+//         req.signal.addEventListener("abort", () => {
+//           console.log("❌ SSE client disconnected");
+//           globalThis.__DISCORD_CLIENTS = globalThis.__DISCORD_CLIENTS.filter((c) => c !== client);
+//         });
+//       },
+//     });
+
+//     return new Response(stream, {
+//       headers: {
+//         "Content-Type": "text/event-stream",
+//         "Cache-Control": "no-cache",
+//         Connection: "keep-alive",
+//       },
+//     });
+//   }
+
+//   // Regular GET fallback (returns latest 2 messages)
+//   const copy = [...memoryBuffer].slice(0, 2).reverse();
+//   console.log("📡 Sending latest 2 messages (GET):", copy);
+
+//   return NextResponse.json({ success: true, messages: copy });
+// }
 
 
 
