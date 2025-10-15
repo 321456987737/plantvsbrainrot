@@ -226,7 +226,7 @@ export default function LiveDiscordUnified() {
             <h3 className="text-lg font-semibold mb-2 text-green-600">Current</h3>
             <GenericHtmlCard msg={predictor.current} />
             <h3 className="text-lg font-semibold mb-2 text-gray-600">Previous</h3>
-            <GenericHtmlCard msg={predictor.previous} variant="past" />
+            {/* <GenericHtmlCard msg={predictor.previous} variant="past" /> */}
           </div>
         </div>
       </div>
