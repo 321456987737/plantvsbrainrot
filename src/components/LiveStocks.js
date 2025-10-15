@@ -190,7 +190,6 @@ export default function LiveDiscordUnified() {
     <div className="max-w-6xl mx-auto sm:p-4">
       <div className="flex items-center justify-between pb-6">
         <div className="flex items-center gap-3">
-          <h1 className="sm:text-3xl text-2xl font-bold">Live Dashboard</h1>
           <div
             className={`w-3 h-3 rounded-full ${connected ? "bg-green-500" : "bg-red-500"}`}
             title={connected ? "Connected" : "Disconnected"}
