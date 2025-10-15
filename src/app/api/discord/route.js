@@ -87,23 +87,31 @@ function broadcastToClients(message) {
 
 /* -------------------- POST handler -------------------- */
 /* Expects POST body: { channel: "SomeName", messages: [ {id,author,content,createdAt}, ... ] } */
-const ALLOWED_ORIGINS = [
-  "https://plantvsbrainrotstock.com",
+const ALLOWED_ORIGIN = [
+//   "https://plantvsbrainrotstock.com",
   "https://bot-1-8at8.onrender.com"
 ];
 export async function POST(req) {
-  const origin = req.headers.get("origin") || req.headers.get("referer") || "";
-  console.log("Origin:", origin);
+    const origin = req.headers.get("origin") || req.headers.get("referer") || "";
 
-  // ✅ Use exact match (case-insensitive)
-  const isAllowed = ALLOWED_ORIGINS.some(
-    (o) => origin.toLowerCase().startsWith(o.toLowerCase() + "/") || origin.toLowerCase() === o.toLowerCase()
-  );
-
-  if (!isAllowed) {
-    console.warn("Blocked origin:", origin);
-    return new NextResponse("Forbidden", { status: 403 });
+  // Block if origin is not allowed
+  if (origin !== ALLOWED_ORIGIN) {
+    console.warn("Blocked request from origin:", origin);
+    return new Response("Forbidden", { status: 403 });
   }
+
+  // const origin = req.headers.get("origin") || req.headers.get("referer") || "";
+  // console.log("Origin:", origin);
+
+  // // ✅ Use exact match (case-insensitive)
+  // const isAllowed = ALLOWED_ORIGINS.some(
+  //   (o) => origin.toLowerCase().startsWith(o.toLowerCase() + "/") || origin.toLowerCase() === o.toLowerCase()
+  // );
+
+  // if (!isAllowed) {
+  //   console.warn("Blocked origin:", origin);
+  //   return new NextResponse("Forbidden", { status: 403 });
+  // }
 
   console.log(2)
 
