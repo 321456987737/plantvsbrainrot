@@ -47,9 +47,11 @@ function broadcastToClients(message) {
 // POST: accept either { messages: [...] } or a single message body
 export async function POST(req) {
   const header = req.headers.get("x-bot-secret") || "";
+  console.log("he comes")
   if (!SECRET || header !== SECRET) {
     return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
   }
+  console.log("he comes 1")
 
   let body;
   try {
@@ -57,6 +59,7 @@ export async function POST(req) {
   } catch (err) {
     return NextResponse.json({ success: false, error: "Invalid JSON" }, { status: 400 });
   }
+  console.log("he comes2")
 
   // Normalize to an array of messages (oldest -> newest)
   let incoming = [];
@@ -67,6 +70,7 @@ export async function POST(req) {
   } else {
     return NextResponse.json({ success: false, error: "Invalid message shape" }, { status: 400 });
   }
+    console.log("he comes3")
 
   // Validate each message
   for (const m of incoming) {
@@ -74,6 +78,7 @@ export async function POST(req) {
       return NextResponse.json({ success: false, error: "Invalid message in batch" }, { status: 400 });
     }
   }
+  console.log("he comes4")
 
   // Append each message to buffer as oldest -> newest
   for (const m of incoming) {
@@ -86,6 +91,7 @@ export async function POST(req) {
     };
     memoryBuffer.push(msg);
   }
+  console.log("he comes5")
 
   // Trim to keep only latest MAX_BUFFER messages (oldest -> newest)
   while (memoryBuffer.length > MAX_BUFFER) {
