@@ -210,7 +210,6 @@ export default function LiveDiscordUnified() {
         </div>
 
         {/* Bottom grid for Weather + Predictor */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Weather Section */}
           <div className="bg-gray-50 rounded-xl p-6 shadow">
             <h2 className="text-xl font-semibold mb-4 text-blue-700">Weather</h2>
@@ -228,7 +227,6 @@ export default function LiveDiscordUnified() {
             <h3 className="text-lg font-semibold mb-2 text-gray-600">Previous</h3>
             {/* <GenericHtmlCard msg={predictor.previous} variant="past" /> */}
           </div>
-        </div>
       </div>
     </div>
   );
