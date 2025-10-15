@@ -58,11 +58,11 @@ function StockCard({ stock, variant = "current" }) {
     <div key={stock.id || stock.createdAt} className={`${cardClass} rounded-lg p-4 mb-4`}>
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-3">
-          <img
+          {/* <img
             src="https://cdn-icons-png.flaticon.com/512/616/616408.png"
             alt="Bot Logo"
             className="w-10 h-10 rounded-full"
-          />
+          /> */}
           <p className="font-semibold text-gray-700">{stock.author}</p>
         </div>
         <small className="text-gray-500">
@@ -114,11 +114,11 @@ function GenericHtmlCard({ msg, variant = "current" }) {
     <div key={msg.id || msg.createdAt} className={`${cardClass} rounded-lg p-4 mb-4`}>
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-3">
-          <img
+          {/* <img
             src="https://cdn-icons-png.flaticon.com/512/616/616408.png"
             alt="Bot Logo"
             className="w-10 h-10 rounded-full"
-          />
+          /> */}
           <p className="font-semibold text-gray-700">{msg.author}</p>
         </div>
         <small className="text-gray-500">
