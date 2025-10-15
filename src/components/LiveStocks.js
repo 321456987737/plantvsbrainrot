@@ -187,7 +187,7 @@ export default function LiveStocks() {
         </div>
         <button
           onClick={() => window.location.reload()}
-          className="bg-white hover:bg-gray-200 border border-gray-400 hover:border-gray-700  text-white sm:py-2 sm:px-4 py-0.5 px-2  rounded-2xl cursor-pointer"
+          className="bg-white hover:bg-gray-200 border-2 border-gray-400 hover:border-gray-700  text-white sm:py-2 sm:px-4 py-0.5 px-2  rounded-2xl cursor-pointer"
         >
           Refresh
         </button>
