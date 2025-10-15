@@ -87,10 +87,15 @@ function broadcastToClients(message) {
 
 /* -------------------- POST handler -------------------- */
 /* Expects POST body: { channel: "SomeName", messages: [ {id,author,content,createdAt}, ... ] } */
-const ALLOWED_ORIGIN = "https://plantvsbrainrotstock.com"
+const ALLOWED_ORIGINS = [
+  "https://plantvsbrainrotstock.com",
+  "https://bot-1-8at8.onrender.com"
+];
 export async function POST(req) {
   const origin = req.headers.get("origin") || req.headers.get("referer") || "";
-   if (!origin.startsWith(ALLOWED_ORIGIN)) {
+  
+  // Allow if origin starts with any approved domain
+  if (!ALLOWED_ORIGINS.some(o => origin.startsWith(o))) {
     return new NextResponse("Forbidden", { status: 403 });
   }
   const header = req.headers.get("x-bot-secret") || "";
