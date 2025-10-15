@@ -87,7 +87,12 @@ function broadcastToClients(message) {
 
 /* -------------------- POST handler -------------------- */
 /* Expects POST body: { channel: "SomeName", messages: [ {id,author,content,createdAt}, ... ] } */
+const ALLOWED_ORIGIN = "https://plantvsbrainrotstock.com"
 export async function POST(req) {
+  const origin = req.headers.get("origin") || req.headers.get("referer") || "";
+   if (!origin.startsWith(ALLOWED_ORIGIN)) {
+    return new NextResponse("Forbidden", { status: 403 });
+  }
   const header = req.headers.get("x-bot-secret") || "";
   if (!SECRET || header !== SECRET) {
     console.warn("Unauthorized POST - secret missing or mismatch");
