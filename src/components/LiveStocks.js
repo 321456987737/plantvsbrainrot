@@ -55,7 +55,7 @@ function StockCard({ stock, variant = "current" }) {
     : "bg-gray-50 shadow-sm border-l-4 border-gray-300";
 
   return (
-    <div key={stock.id || stock.createdAt} className={`${cardClass} rounded-lg p-4 mb-4`}>
+    <div key={stock.id || stock.createdAt} className={`${cardClass} rounded-lg p-4 mb-3.5`}>
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-3">
           {/* <img
