@@ -45,125 +45,112 @@ function parseItemsFromHtml(htmlContent) {
   }
 }
 
-/* ========== Child components ========== */
+/* ========== Card render helpers (shared styles) ========== */
 
-function LiveStockPanel({ messages }) {
-  const current = messages?.length ? messages[messages.length - 1] : null;
-  const previous = messages?.length > 1 ? messages[messages.length - 2] : null;
+function StockCard({ stock, variant = "current" }) {
+  if (!stock) return null;
+  const sections = parseItemsFromHtml(stock.content);
+  const isCurrent = variant === "current";
+  const cardClass = isCurrent
+    ? "bg-white shadow-lg border-l-4 border-green-500"
+    : "bg-gray-50 shadow-sm border-l-4 border-gray-300";
 
-  const renderCard = (stock, type) => {
-    if (!stock) return null;
-    const sections = parseItemsFromHtml(stock.content);
-    const isCurrent = type === "current";
-    const cardClass = isCurrent
-      ? "bg-white shadow-lg border-l-4 border-green-500"
-      : "bg-gray-50 shadow-sm border-l-4 border-gray-300";
-
-    return (
-      <div key={stock.id || stock.createdAt} className={`${cardClass} rounded-lg p-4 mb-4`}>
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-3">
-            <img src="https://cdn-icons-png.flaticon.com/512/616/616408.png" alt="Bot Logo" className="w-10 h-10 rounded-full" />
-            <p className="font-semibold text-gray-700">{stock.author}</p>
-          </div>
-          <small className="text-gray-500">{stock.createdAt ? new Date(stock.createdAt).toLocaleTimeString() : ""}</small>
+  return (
+    <div key={stock.id || stock.createdAt} className={`${cardClass} rounded-lg p-4 mb-4`}>
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-3">
+          <img
+            src="https://cdn-icons-png.flaticon.com/512/616/616408.png"
+            alt="Bot Logo"
+            className="w-10 h-10 rounded-full"
+          />
+          <p className="font-semibold text-gray-700">{stock.author}</p>
         </div>
-
-        {sections.seeds?.length > 0 && (
-          <div className="mb-3">
-            <h3 className="text-green-600 font-semibold mb-2">Seeds</h3>
-            {sections.seeds.map((item, i) => (
-              <div key={i} className="flex items-center gap-4 mb-1 border-b-2 border-gray-200 pb-1">
-                <div className="flex items-center gap-2"><img src={item.img} alt={item.name} className="w-6 h-6" /></div>
-                <span className="font-semibold">{item.quantity}</span>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {sections.gear?.length > 0 && (
-          <div>
-            <h3 className="text-blue-600 font-semibold mb-2">Gear</h3>
-            {sections.gear.map((item, i) => (
-              <div key={i} className="flex items-center gap-4 mb-1 border-b-2 border-gray-200 pb-1">
-                <div className="flex items-center gap-2"><img src={item.img} alt={item.name} className="w-6 h-6" /></div>
-                <span className="font-semibold">{item.quantity}</span>
-              </div>
-            ))}
-          </div>
-        )}
+        <small className="text-gray-500">
+          {stock.createdAt ? new Date(stock.createdAt).toLocaleTimeString() : ""}
+        </small>
       </div>
-    );
-  };
 
-  return (
-    <div className="p-4 bg-white rounded-xl shadow">
-      <h2 className="text-lg font-semibold text-green-700 mb-3">Live Stock</h2>
-      {current ? renderCard(current, "current") : <p className="text-gray-400">No current stock</p>}
-      {previous ? (
-        <>
-          <h3 className="text-sm text-gray-600 mb-1">Previous Stock</h3>
-          {renderCard(previous, "past")}
-        </>
-      ) : null}
-    </div>
-  );
-}
-
-function WeatherPanel({ messages }) {
-  const current = messages?.length ? messages[messages.length - 1] : null;
-  const previous = messages?.length > 1 ? messages[messages.length - 2] : null;
-
-  return (
-    <div className="p-4 bg-white rounded-xl shadow">
-      <h2 className="text-lg font-semibold text-indigo-600 mb-3">Weather</h2>
-      {current ? (
+      {sections.seeds?.length > 0 && (
         <div className="mb-3">
-          <p className="text-sm text-gray-600 font-semibold">{current.author} • {new Date(current.createdAt).toLocaleTimeString()}</p>
-          <div className="mt-2 text-gray-800" dangerouslySetInnerHTML={{ __html: current.content }} />
+          <h3 className="text-green-600 font-semibold mb-2">Seeds</h3>
+          {sections.seeds.map((item, i) => (
+            <div
+              key={i}
+              className="flex items-center gap-4 mb-1 border-b-2 border-gray-200 pb-1"
+            >
+              <div className="flex items-center gap-2">
+                <img src={item.img} alt={item.name} className="w-6 h-6" />
+              </div>
+              <span className="font-semibold">{item.quantity}</span>
+            </div>
+          ))}
         </div>
-      ) : <p className="text-gray-400">No current weather message</p>}
+      )}
 
-      {previous ? (
+      {sections.gear?.length > 0 && (
         <div>
-          <p className="text-sm text-gray-600 font-semibold">Previous • {new Date(previous.createdAt).toLocaleTimeString()}</p>
-          <div className="mt-1 text-gray-700" dangerouslySetInnerHTML={{ __html: previous.content }} />
+          <h3 className="text-blue-600 font-semibold mb-2">Gear</h3>
+          {sections.gear.map((item, i) => (
+            <div
+              key={i}
+              className="flex items-center gap-4 mb-1 border-b-2 border-gray-200 pb-1"
+            >
+              <div className="flex items-center gap-2">
+                <img src={item.img} alt={item.name} className="w-6 h-6" />
+              </div>
+              <span className="font-semibold">{item.quantity}</span>
+            </div>
+          ))}
         </div>
-      ) : null}
+      )}
     </div>
   );
 }
 
-function StockPredictorPanel({ messages }) {
-  const current = messages?.length ? messages[messages.length - 1] : null;
-  const previous = messages?.length > 1 ? messages[messages.length - 2] : null;
+function GenericHtmlCard({ msg, variant = "current" }) {
+  if (!msg) return null;
+  const isCurrent = variant === "current";
+  const cardClass = isCurrent
+    ? "bg-white shadow-lg border-l-4 border-green-500"
+    : "bg-gray-50 shadow-sm border-l-4 border-gray-300";
 
   return (
-    <div className="p-4 bg-white rounded-xl shadow">
-      <h2 className="text-lg font-semibold text-amber-600 mb-3">Stock Predictor</h2>
-      {current ? (
-        <div className="mb-3">
-          <p className="text-sm text-gray-600 font-semibold">{current.author} • {new Date(current.createdAt).toLocaleTimeString()}</p>
-          <div className="mt-2 text-gray-800" dangerouslySetInnerHTML={{ __html: current.content }} />
+    <div key={msg.id || msg.createdAt} className={`${cardClass} rounded-lg p-4 mb-4`}>
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-3">
+          <img
+            src="https://cdn-icons-png.flaticon.com/512/616/616408.png"
+            alt="Bot Logo"
+            className="w-10 h-10 rounded-full"
+          />
+          <p className="font-semibold text-gray-700">{msg.author}</p>
         </div>
-      ) : <p className="text-gray-400">No current predictor message</p>}
+        <small className="text-gray-500">
+          {msg.createdAt ? new Date(msg.createdAt).toLocaleTimeString() : ""}
+        </small>
+      </div>
 
-      {previous ? (
-        <div>
-          <p className="text-sm text-gray-600 font-semibold">Previous • {new Date(previous.createdAt).toLocaleTimeString()}</p>
-          <div className="mt-1 text-gray-700" dangerouslySetInnerHTML={{ __html: previous.content }} />
-        </div>
-      ) : null}
+      <div className="text-gray-800" dangerouslySetInnerHTML={{ __html: msg.content }} />
     </div>
   );
 }
 
-/* ========== Main page component ========== */
-export default function LiveDiscordDashboard() {
+/* ========== Main component: Unified single-section UI with tabs ========== */
+
+export default function LiveDiscordUnified() {
   const [channelsState, setChannelsState] = useState({}); // { LiveStock: [...], Weather: [...], StockPredictor: [...] }
   const [connected, setConnected] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [selectedChannel, setSelectedChannel] = useState("LiveStock");
   const esRef = useRef(null);
+
+  // list of channel tabs and their display titles
+  const channelTabs = [
+    { key: "LiveStock", title: "Live Stock" },
+    { key: "Weather", title: "Weather" },
+    { key: "StockPredictor", title: "Stock Predictor" },
+  ];
 
   useEffect(() => {
     if (esRef.current) esRef.current.close();
@@ -196,7 +183,6 @@ export default function LiveDiscordDashboard() {
     es.onerror = (err) => {
       console.warn("SSE error:", err);
       setConnected(false);
-      // EventSource will auto-reconnect; UI shows disconnected
     };
 
     return () => {
@@ -205,26 +191,98 @@ export default function LiveDiscordDashboard() {
     };
   }, []);
 
-  // Extract channel messages for panels (default to empty arrays)
-  const liveStockMessages = channelsState.LiveStock || [];
-  const weatherMessages = channelsState.Weather || [];
-  const predictorMessages = channelsState.StockPredictor || [];
+  // helpers to get current/previous for selected channel
+  const selectedMessages = channelsState[selectedChannel] || [];
+  const current = selectedMessages.length ? selectedMessages[selectedMessages.length - 1] : null;
+  const previous = selectedMessages.length > 1 ? selectedMessages[selectedMessages.length - 2] : null;
 
   return (
-    <div className="max-w-6xl mx-auto p-6">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold">Live Discord Dashboard</h1>
-        <div className={`w-3 h-3 rounded-full ${connected ? "bg-green-500" : "bg-red-500"}`} title={connected ? "Connected" : "Disconnected"} />
+    <div className="max-w-5xl mx-auto sm:p-4">
+      <div className="flex items-center justify-between pb-6">
+        <div className="flex items-center gap-4">
+          <h1 className="sm:text-3xl text-2xl font-bold">Live Dashboard</h1>
+          <div
+            className={`w-3 h-3 rounded-full ${connected ? "bg-green-500" : "bg-red-500"}`}
+            title={connected ? "Connected" : "Disconnected"}
+          />
+        </div>
+
+        <div className="flex items-center gap-3">
+          <div className="hidden sm:flex items-center gap-2 bg-white rounded-xl p-1 shadow-sm">
+            {channelTabs.map((tab) => (
+              <button
+                key={tab.key}
+                onClick={() => setSelectedChannel(tab.key)}
+                className={`px-3 py-1 rounded-lg text-sm font-medium ${
+                  selectedChannel === tab.key ? "bg-gray-900 text-white" : "text-gray-700"
+                }`}
+              >
+                {tab.title}
+              </button>
+            ))}
+          </div>
+
+          <button
+            onClick={() => window.location.reload()}
+            className="bg-white hover:bg-gray-200 border-2 border-gray-400 hover:border-gray-700 text-black py-2 px-4 rounded cursor-pointer"
+          >
+            Refresh
+          </button>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-6">
-        {/* LiveStock (top) */}
-        <LiveStockPanel messages={liveStockMessages} />
+      {/* Mobile tabs (below header) */}
+      <div className="sm:hidden mb-4">
+        <div className="flex gap-2">
+          {channelTabs.map((tab) => (
+            <button
+              key={tab.key}
+              onClick={() => setSelectedChannel(tab.key)}
+              className={`flex-1 text-sm py-2 rounded-md font-medium ${
+                selectedChannel === tab.key ? "bg-gray-900 text-white" : "bg-white text-gray-700"
+              }`}
+            >
+              {tab.title}
+            </button>
+          ))}
+        </div>
+      </div>
 
-        {/* Below: Weather & StockPredictor as two columns on md+ */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <WeatherPanel messages={weatherMessages} />
-          <StockPredictorPanel messages={predictorMessages} />
+      {/* Main unified section */}
+      <div className="bg-gray-50 rounded-xl p-6 shadow">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-xl font-semibold">
+            {channelTabs.find((c) => c.key === selectedChannel)?.title || selectedChannel}
+          </h2>
+          <small className="text-gray-600">
+            Showing: <span className="font-medium">{selectedMessages.length} message(s)</span>
+          </small>
+        </div>
+
+        {/* Current */}
+        <div>
+          <h3 className="text-lg font-semibold mb-2 text-green-600">Current</h3>
+
+          {selectedChannel === "LiveStock" ? (
+            <StockCard stock={current} variant="current" />
+          ) : (
+            <GenericHtmlCard msg={current} variant="current" />
+          )}
+
+          {!current && <p className="text-gray-400">No current message for this channel.</p>}
+        </div>
+
+        {/* Previous */}
+        <div className="mt-4">
+          <h3 className="text-lg font-semibold mb-2 text-gray-600">Previous</h3>
+
+          {selectedChannel === "LiveStock" ? (
+            <StockCard stock={previous} variant="past" />
+          ) : (
+            <GenericHtmlCard msg={previous} variant="past" />
+          )}
+
+          {!previous && <p className="text-gray-400">No previous message for this channel.</p>}
         </div>
       </div>
     </div>
