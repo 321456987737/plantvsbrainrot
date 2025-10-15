@@ -93,7 +93,7 @@ const ALLOWED_ORIGIN = [
 ];
 export async function POST(req) {
     const origin = req.headers.get("origin") || req.headers.get("referer") || "";
-
+  console.log(origin,"origin")
   // Block if origin is not allowed
   if (origin !== ALLOWED_ORIGIN) {
     console.warn("Blocked request from origin:", origin);
