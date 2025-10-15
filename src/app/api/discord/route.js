@@ -93,17 +93,19 @@ const ALLOWED_ORIGINS = [
 ];
 export async function POST(req) {
   const origin = req.headers.get("origin") || req.headers.get("referer") || "";
-  
+    console.log(origin,"origin")
   // Allow if origin starts with any approved domain
+console.log(1)
   if (!ALLOWED_ORIGINS.some(o => origin.startsWith(o))) {
     return new NextResponse("Forbidden", { status: 403 });
   }
+  console.log(2)
   const header = req.headers.get("x-bot-secret") || "";
   if (!SECRET || header !== SECRET) {
     console.warn("Unauthorized POST - secret missing or mismatch");
     return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
   }
-
+  console.log(3)
   let raw;
   try {
     raw = await req.text();
