@@ -178,8 +178,8 @@ export default function LiveStocks() {
   return (
     <div className="max-w-5xl mx-auto sm:p-4">
       <div className="flex items-center justify-between pb-6">
-        <div className="flex items-center gap-4">
-          <h1 className="sm:text-3xl text-2xl font-bold text-center">Live Stocks Dashboard</h1>
+        <div className="flex items-center sm:gap-4 gap-1">
+          <h1 className="sm:text-3xl text-1xl font-bold text-center">Live Stocks Dashboard</h1>
           <div
             className={`w-3 h-3 rounded-full ${connected ? "bg-green-500" : "bg-red-500"}`}
             title={connected ? "Connected" : "Disconnected"}
@@ -187,7 +187,7 @@ export default function LiveStocks() {
         </div>
         <button
           onClick={() => window.location.reload()}
-          className="bg-white hover:bg-gray-200 border-gray-400 hover:border-gray-700  text-white sm:py-2 sm:px-4 py-0.5 px-2  rounded-2xl cursor-pointer"
+          className="bg-white hover:bg-gray-200 border border-gray-400 hover:border-gray-700  text-white sm:py-2 sm:px-4 py-0.5 px-2  rounded-2xl cursor-pointer"
         >
           Refresh
         </button>
