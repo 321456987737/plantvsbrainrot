@@ -55,7 +55,7 @@ function StockCard({ stock, variant = "current" }) {
     : "bg-gray-50 shadow-sm border-l-4 border-gray-300";
 
   return (
-    <div key={stock.id || stock.createdAt} className={`${cardClass} rounded-lg p-4 mb-3.5`}>
+    <div key={stock.id || stock.createdAt} className={`${cardClass} rounded-lg sm:p-4 p-1 mb-3.5`}>
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-3">
           {/* <img
@@ -111,7 +111,7 @@ function GenericHtmlCard({ msg, variant = "current" }) {
     : "bg-gray-50 shadow-sm border-l-4 border-gray-300";
 
   return (
-    <div key={msg.id || msg.createdAt} className={`${cardClass} rounded-lg p-4 mb-4`}>
+    <div key={msg.id || msg.createdAt} className={`${cardClass} rounded-lg sm:p-4 p-1 mb-4`}>
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-3">
           {/* <img
@@ -204,8 +204,8 @@ export default function LiveDiscordUnified() {
           <h2 className="text-xl font-semibold mb-4 text-green-700">Live Stock</h2>
           <h3 className="text-lg font-semibold mb-2 text-green-600">Current</h3>
           <StockCard stock={liveStock.current} />
-          <h3 className="text-lg font-semibold mb-2 text-gray-600">Previous</h3>
-          <StockCard stock={liveStock.previous} variant="past" />
+          {/* <h3 className="text-lg font-semibold mb-2 text-gray-600">Previous</h3>
+          <StockCard stock={liveStock.previous} variant="past" /> */}
         </div>
 
         {/* Bottom grid for Weather + Predictor */}
