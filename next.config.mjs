@@ -6,12 +6,14 @@ const nextConfig = {
         source: "/(.*)",
         headers: [
           {
-            // ✅ This is the real protection: only allow this one domain
             key: "Content-Security-Policy",
-            value: "frame-ancestors 'self' https://plantvsbrainrotstock.com;",
+            // ✅ Add multiple allowed domains separated by spaces
+            value:
+              "frame-ancestors 'self' https://plantvsbrainrotstock.com https://plantsvsbrainrotsstocknotifier.com;",
           },
           {
-            // Optional: older browser fallback
+            // ⚠️ Note: X-Frame-Options only supports ONE domain
+            // So keep it for backward compatibility (optional)
             key: "X-Frame-Options",
             value: "ALLOW-FROM https://plantvsbrainrotstock.com",
           },
@@ -28,15 +30,22 @@ export default nextConfig;
 //   async headers() {
 //     return [
 //       {
-//         source: '/(.*)',
+//         source: "/(.*)",
 //         headers: [
-//           { key: 'X-Frame-Options', value: 'DENY' },
-//           { key: 'Content-Security-Policy', value: "frame-ancestors 'none';" },
+//           {
+//             // ✅ This is the real protection: only allow this one domain
+//             key: "Content-Security-Policy",
+//             value: "frame-ancestors 'self' https://plantvsbrainrotstock.com;",
+//           },
+//           {
+//             // Optional: older browser fallback
+//             key: "X-Frame-Options",
+//             value: "ALLOW-FROM https://plantvsbrainrotstock.com",
+//           },
 //         ],
 //       },
 //     ];
 //   },
 // };
-
 
 // export default nextConfig;
