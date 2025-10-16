@@ -55,7 +55,7 @@ function StockCard({ stock, variant = "current" }) {
     : "bg-gray-50 shadow-sm border-l-4 border-gray-300";
 
   return (
-    <div key={stock.id || stock.createdAt} className={`${cardClass} rounded-lg sm:p-4 p-1 mb-3.5`}>
+    <div key={stock.id || stock.createdAt} className={`${cardClass} rounded-lg p-4 mb-3.5`}>
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-3">
           {/* <img
@@ -111,7 +111,7 @@ function GenericHtmlCard({ msg, variant = "current" }) {
     : "bg-gray-50 shadow-sm border-l-4 border-gray-300";
 
   return (
-    <div key={msg.id || msg.createdAt} className={`${cardClass} rounded-lg sm:p-4 p-1 mb-4`}>
+    <div key={msg.id || msg.createdAt} className={`${cardClass} rounded-lg p-4 mb-4`}>
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-3">
           {/* <img
@@ -200,7 +200,7 @@ export default function LiveDiscordUnified() {
       {/* Layout: LiveStock on top, Weather + Predictor side-by-side on large, stacked on small */}
       <div className="flex flex-col gap-6">
         {/* Live Stock (top always full width) */}
-        <div className="bg-gray-50 rounded-xl p-6 shadow">
+        <div className="bg-gray-50 rounded-xl sm:p-6 p-1 shadow">
           <h2 className="text-xl font-semibold mb-4 text-green-700">Live Stock</h2>
           <h3 className="text-lg font-semibold mb-2 text-green-600">Current</h3>
           <StockCard stock={liveStock.current} />
@@ -210,7 +210,7 @@ export default function LiveDiscordUnified() {
 
         {/* Bottom grid for Weather + Predictor */}
           {/* Weather Section */}
-          <div className="bg-gray-50 rounded-xl p-6 shadow">
+          <div className="bg-gray-50 rounded-xl sm:p-6 p-1 shadow">
             <h2 className="text-xl font-semibold mb-4 text-blue-700">Weather</h2>
             <h3 className="text-lg font-semibold mb-2 text-green-600">Current</h3>
             <GenericHtmlCard msg={weather.current} />
@@ -219,7 +219,7 @@ export default function LiveDiscordUnified() {
           </div>
 
           {/* Stock Predictor Section */}
-          <div className="bg-gray-50 rounded-xl p-6 shadow">
+          <div className="bg-gray-50 rounded-xl sm:p-6 p-1 shadow">
             <h2 className="text-xl font-semibold mb-4 text-purple-700">Stock Predictor</h2>
             <h3 className="text-lg font-semibold mb-2 text-green-600">Current</h3>
             <GenericHtmlCard msg={predictor.current} />
