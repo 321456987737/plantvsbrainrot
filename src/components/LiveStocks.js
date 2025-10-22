@@ -47,7 +47,7 @@ function parseItemsFromHtml(htmlContent) {
 
 /* ========== Card render helpers ========== */
 function StockCard({ stock, variant = "current" }) {
-  if (!stock) return null;
+  // if (!stock) return null;
   const sections = parseItemsFromHtml(stock.content);
   const isCurrent = variant === "current";
   const cardClass = isCurrent
