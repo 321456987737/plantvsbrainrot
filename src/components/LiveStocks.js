@@ -51,6 +51,7 @@ function StockCard({ stock, variant = "current" }) {
   console.log(stock,"stock 1")
   console.log(variant,"variant 1")
   const sections = parseItemsFromHtml(stock.content);
+  console.log(sections,"sections")
   const isCurrent = variant === "current";
   const cardClass = isCurrent
     ? "bg-white shadow-lg border-l-4 border-green-500"
