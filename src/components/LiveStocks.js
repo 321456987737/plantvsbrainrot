@@ -32,10 +32,21 @@ function parseItemsFromHtml(htmlContent) {
       const items = [];
 
       doc.querySelectorAll("img").forEach((el) => {
+        let quantity = "";
+
+        // Case 1: Quantity is a <strong> immediately after <img>
+        if (el.nextElementSibling?.tagName === "STRONG") {
+          quantity = el.nextElementSibling.textContent.trim();
+        }
+        // Case 2: Quantity is a plain text node
+        else if (el.nextSibling?.nodeType === Node.TEXT_NODE) {
+          quantity = el.nextSibling.textContent.trim();
+        }
+
         items.push({
           img: el.src,
           name: el.alt || "",
-          quantity: el.nextSibling?.textContent?.trim() || "",
+          quantity: quantity,
         });
       });
 
@@ -63,13 +74,18 @@ function StockCard({ stock, variant = "current" }) {
     : "bg-gray-50 shadow-sm border-l-4 border-gray-300";
 
   return (
-    <div key={stock.id || stock.createdAt} className={`${cardClass} rounded-lg p-4 mb-3.5`}>
+    <div
+      key={stock.id || stock.createdAt}
+      className={`${cardClass} rounded-lg p-4 mb-3.5`}
+    >
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-3">
           <p className="font-semibold text-gray-700">{stock.author}</p>
         </div>
         <small className="text-gray-500">
-          {stock.createdAt ? new Date(stock.createdAt).toLocaleTimeString() : ""}
+          {stock.createdAt
+            ? new Date(stock.createdAt).toLocaleTimeString()
+            : ""}
         </small>
       </div>
 
@@ -119,17 +135,25 @@ function GenericHtmlCard({ msg, variant = "current" }) {
     : "bg-gray-50 shadow-sm border-l-4 border-gray-300";
 
   return (
-    <div key={msg.id || msg.createdAt} className={`${cardClass} rounded-lg p-4 mb-4`}>
+    <div
+      key={msg.id || msg.createdAt}
+      className={`${cardClass} rounded-lg p-4 mb-4`}
+    >
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-3">
           <p className="font-semibold text-gray-700">{msg.author}</p>
         </div>
         <small className="text-gray-500">
-          {msg.createdAt ? new Date(msg.createdAt).toLocaleTimeString() : ""}
+          {msg.createdAt
+            ? new Date(msg.createdAt).toLocaleTimeString()
+            : ""}
         </small>
       </div>
 
-      <div className="text-gray-800" dangerouslySetInnerHTML={{ __html: msg.content }} />
+      <div
+        className="text-gray-800"
+        dangerouslySetInnerHTML={{ __html: msg.content }}
+      />
     </div>
   );
 }
@@ -159,7 +183,10 @@ export default function LiveDiscordUnified() {
           setChannelsState(data.channels || {});
         } else if (data.type === "NEW_BATCH") {
           const { channel, messages } = data;
-          setChannelsState((prev) => ({ ...prev, [channel]: messages.slice(-2) }));
+          setChannelsState((prev) => ({
+            ...prev,
+            [channel]: messages.slice(-2),
+          }));
         }
       } catch (err) {
         console.error("Failed to parse SSE data:", err, ev.data);
@@ -194,30 +221,283 @@ export default function LiveDiscordUnified() {
       <div className="flex flex-col gap-6">
         {/* Live Stock Section */}
         <div className="bg-gray-50 rounded-xl sm:p-6 p-1 shadow">
-          <h2 className="text-xl font-semibold mb-4 text-green-700">Live Stock</h2>
-          <h3 className="text-lg font-semibold mb-2 text-green-600">Current</h3>
+          <h2 className="text-xl font-semibold mb-4 text-green-700">
+            Live Stock
+          </h2>
+          <h3 className="text-lg font-semibold mb-2 text-green-600">
+            Current
+          </h3>
           <StockCard stock={liveStock.current} />
         </div>
 
         {/* Weather Section */}
         <div className="bg-gray-50 rounded-xl sm:p-6 p-1 shadow">
-          <h2 className="text-xl font-semibold mb-4 text-blue-700">Weather</h2>
-          <h3 className="text-lg font-semibold mb-2 text-green-600">Current</h3>
+          <h2 className="text-xl font-semibold mb-4 text-blue-700">
+            Weather
+          </h2>
+          <h3 className="text-lg font-semibold mb-2 text-green-600">
+            Current
+          </h3>
           <GenericHtmlCard msg={weather.current} />
-          <h3 className="text-lg font-semibold mb-2 text-gray-600">Previous</h3>
+          <h3 className="text-lg font-semibold mb-2 text-gray-600">
+            Previous
+          </h3>
           <GenericHtmlCard msg={weather.previous} variant="past" />
         </div>
 
         {/* Stock Predictor Section */}
         <div className="bg-gray-50 rounded-xl sm:p-6 p-1 shadow">
-          <h2 className="text-xl font-semibold mb-4 text-purple-700">Stock Predictor</h2>
-          <h3 className="text-lg font-semibold mb-2 text-green-600">Current</h3>
+          <h2 className="text-xl font-semibold mb-4 text-purple-700">
+            Stock Predictor
+          </h2>
+          <h3 className="text-lg font-semibold mb-2 text-green-600">
+            Current
+          </h3>
           <GenericHtmlCard msg={predictor.current} />
         </div>
       </div>
     </div>
   );
 }
+
+
+// "use client";
+
+// import { useEffect, useRef, useState } from "react";
+
+// /* ========== Helper: parseItemsFromHtml ========== */
+// function parseItemsFromHtml(htmlContent) {
+//   if (!htmlContent) return { seeds: [], gear: [] };
+
+//   try {
+//     // Convert to lowercase for section matching
+//     const lower = htmlContent.toLowerCase();
+
+//     // Find section indexes
+//     const seedsStart = lower.indexOf("seeds stock:");
+//     const gearStart = lower.indexOf("gear stock:");
+
+//     // Extract section HTML substrings
+//     const seedsHtml =
+//       seedsStart !== -1 && gearStart !== -1
+//         ? htmlContent.slice(seedsStart + 12, gearStart)
+//         : seedsStart !== -1
+//         ? htmlContent.slice(seedsStart + 12)
+//         : "";
+
+//     const gearHtml =
+//       gearStart !== -1 ? htmlContent.slice(gearStart + 11) : "";
+
+//     // Helper: parse each section and extract <img> tags with quantities
+//     const parseSection = (sectionHtml) => {
+//       const parser = new DOMParser();
+//       const doc = parser.parseFromString(sectionHtml, "text/html");
+//       const items = [];
+
+//       doc.querySelectorAll("img").forEach((el) => {
+//         items.push({
+//           img: el.src,
+//           name: el.alt || "",
+//           quantity: el.nextSibling?.textContent?.trim() || "",
+//         });
+//       });
+
+//       return items;
+//     };
+
+//     return {
+//       seeds: parseSection(seedsHtml),
+//       gear: parseSection(gearHtml),
+//     };
+//   } catch (err) {
+//     console.error("parseItems error:", err);
+//     return { seeds: [], gear: [] };
+//   }
+// }
+
+// /* ========== Card render helpers ========== */
+// function StockCard({ stock, variant = "current" }) {
+//   if (!stock) return null;
+//   const sections = parseItemsFromHtml(stock.content);
+
+//   const isCurrent = variant === "current";
+//   const cardClass = isCurrent
+//     ? "bg-white shadow-lg border-l-4 border-green-500"
+//     : "bg-gray-50 shadow-sm border-l-4 border-gray-300";
+
+//   return (
+//     <div key={stock.id || stock.createdAt} className={`${cardClass} rounded-lg p-4 mb-3.5`}>
+//       <div className="flex items-center justify-between mb-3">
+//         <div className="flex items-center gap-3">
+//           <p className="font-semibold text-gray-700">{stock.author}</p>
+//         </div>
+//         <small className="text-gray-500">
+//           {stock.createdAt ? new Date(stock.createdAt).toLocaleTimeString() : ""}
+//         </small>
+//       </div>
+
+//       {/* Seeds Section */}
+//       {sections.seeds?.length > 0 && (
+//         <div className="mb-3">
+//           <h3 className="text-green-600 font-semibold mb-2">Seeds</h3>
+//           {sections.seeds.map((item, i) => (
+//             <div
+//               key={i}
+//               className="flex items-center gap-4 mb-1 border-b-2 border-gray-200 pb-1"
+//             >
+//               <img src={item.img} alt={item.name} className="w-6 h-6" />
+//               <span className="font-semibold">{item.name}</span>
+//               <span className="text-gray-700">{item.quantity}</span>
+//             </div>
+//           ))}
+//         </div>
+//       )}
+
+//       {/* Gear Section */}
+//       {sections.gear?.length > 0 && (
+//         <div>
+//           <h3 className="text-blue-600 font-semibold mb-2">Gear</h3>
+//           {sections.gear.map((item, i) => (
+//             <div
+//               key={i}
+//               className="flex items-center gap-4 mb-1 border-b-2 border-gray-200 pb-1"
+//             >
+//               <img src={item.img} alt={item.name} className="w-6 h-6" />
+//               <span className="font-semibold">{item.name}</span>
+//               <span className="text-gray-700">{item.quantity}</span>
+//             </div>
+//           ))}
+//         </div>
+//       )}
+//     </div>
+//   );
+// }
+
+// /* ========== Generic Card ========== */
+// function GenericHtmlCard({ msg, variant = "current" }) {
+//   if (!msg) return null;
+//   const isCurrent = variant === "current";
+//   const cardClass = isCurrent
+//     ? "bg-white shadow-lg border-l-4 border-green-500"
+//     : "bg-gray-50 shadow-sm border-l-4 border-gray-300";
+
+//   return (
+//     <div key={msg.id || msg.createdAt} className={`${cardClass} rounded-lg p-4 mb-4`}>
+//       <div className="flex items-center justify-between mb-3">
+//         <div className="flex items-center gap-3">
+//           <p className="font-semibold text-gray-700">{msg.author}</p>
+//         </div>
+//         <small className="text-gray-500">
+//           {msg.createdAt ? new Date(msg.createdAt).toLocaleTimeString() : ""}
+//         </small>
+//       </div>
+
+//       <div className="text-gray-800" dangerouslySetInnerHTML={{ __html: msg.content }} />
+//     </div>
+//   );
+// }
+
+// /* ========== Main Unified Layout ========== */
+// export default function LiveDiscordUnified() {
+//   const [channelsState, setChannelsState] = useState({});
+//   const [connected, setConnected] = useState(false);
+//   const [loading, setLoading] = useState(true);
+//   const esRef = useRef(null);
+
+//   useEffect(() => {
+//     if (esRef.current) esRef.current.close();
+//     const es = new EventSource("/api/discord?stream=true");
+//     esRef.current = es;
+
+//     es.onopen = () => {
+//       setConnected(true);
+//       setLoading(false);
+//       console.log("SSE connected to /api/discord");
+//     };
+
+//     es.onmessage = (ev) => {
+//       try {
+//         const data = JSON.parse(ev.data);
+//         if (data.type === "INITIAL_DATA") {
+//           setChannelsState(data.channels || {});
+//         } else if (data.type === "NEW_BATCH") {
+//           const { channel, messages } = data;
+//           setChannelsState((prev) => ({ ...prev, [channel]: messages.slice(-2) }));
+//         }
+//       } catch (err) {
+//         console.error("Failed to parse SSE data:", err, ev.data);
+//       }
+//     };
+
+//     es.onerror = (err) => {
+//       console.warn("SSE error:", err);
+//       setConnected(false);
+//     };
+
+//     return () => {
+//       es.close();
+//       esRef.current = null;
+//     };
+//   }, []);
+
+//   const getMessages = (key) => {
+//     const msgs = channelsState[key] || [];
+//     return {
+//       current: msgs[msgs.length - 1] || null,
+//       previous: msgs[msgs.length - 2] || null,
+//     };
+//   };
+
+//   const liveStock = getMessages("LiveStock");
+//   const weather = getMessages("Weather");
+//   const predictor = getMessages("StockPredictor");
+
+//   return (
+//     <div className="max-w-6xl mx-auto sm:p-4">
+//       <div className="flex flex-col gap-6">
+//         {/* Live Stock Section */}
+//         <div className="bg-gray-50 rounded-xl sm:p-6 p-1 shadow">
+//           <h2 className="text-xl font-semibold mb-4 text-green-700">Live Stock</h2>
+//           <h3 className="text-lg font-semibold mb-2 text-green-600">Current</h3>
+//           <StockCard stock={liveStock.current} />
+//         </div>
+
+//         {/* Weather Section */}
+//         <div className="bg-gray-50 rounded-xl sm:p-6 p-1 shadow">
+//           <h2 className="text-xl font-semibold mb-4 text-blue-700">Weather</h2>
+//           <h3 className="text-lg font-semibold mb-2 text-green-600">Current</h3>
+//           <GenericHtmlCard msg={weather.current} />
+//           <h3 className="text-lg font-semibold mb-2 text-gray-600">Previous</h3>
+//           <GenericHtmlCard msg={weather.previous} variant="past" />
+//         </div>
+
+//         {/* Stock Predictor Section */}
+//         <div className="bg-gray-50 rounded-xl sm:p-6 p-1 shadow">
+//           <h2 className="text-xl font-semibold mb-4 text-purple-700">Stock Predictor</h2>
+//           <h3 className="text-lg font-semibold mb-2 text-green-600">Current</h3>
+//           <GenericHtmlCard msg={predictor.current} />
+//         </div>
+//       </div>
+//     </div>
+//   );
+// }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 // // app/discord/page.js
 // "use client";
