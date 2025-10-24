@@ -171,6 +171,7 @@ function StockCard({ stock, variant = "current" }) {
 
 /* ========== Generic HTML Card ========== */
 function GenericHtmlCard({ msg, variant = "current" }) {
+  console.log(msg,"this sit hemessage")
   if (!msg) return null;
   const isCurrent = variant === "current";
   const cardClass = isCurrent
@@ -213,12 +214,15 @@ export default function LiveDiscordUnified() {
         const data = JSON.parse(ev.data);
         if (data.type === "INITIAL_DATA") {
           setChannelsState(data.channels || {});
+          console.log(data.channels,"here is the channel")
         } else if (data.type === "NEW_BATCH") {
           const { channel, messages } = data;
           setChannelsState((prev) => ({
             ...prev,
             [channel]: messages.slice(-2),
           }));
+                    console.log(data.channel,"here is the channel2222")
+
         }
       } catch (err) {
         console.error("Failed to parse SSE data:", err, ev.data);
