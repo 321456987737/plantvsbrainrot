@@ -237,6 +237,7 @@ export default function LiveDiscordUnified() {
   }, []);
 
   const getMessages = (key) => {
+    console.log(key,"keys ")
     const msgs = channelsState[key] || [];
     return {
       current: msgs[msgs.length - 1] || null,
@@ -247,7 +248,10 @@ export default function LiveDiscordUnified() {
   const liveStock = getMessages("LiveStock");
   const weather = getMessages("Weather");
   const predictor = getMessages("StockPredictor");
-
+  useEffect(() => {
+    console.log(liveStock,weather,predictor,"all of those ")
+  }, [liveStock, weather, predictor]);
+  
   return (
     <div className="max-w-6xl mx-auto sm:p-4">
       <div className="flex flex-col gap-6">

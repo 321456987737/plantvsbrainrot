@@ -85,33 +85,7 @@ function broadcastToClients(message) {
   globalThis.__DISCORD_SSE_CLIENTS = alive;
 }
 
-/* -------------------- POST handler -------------------- */
-/* Expects POST body: { channel: "SomeName", messages: [ {id,author,content,createdAt}, ... ] } */
-// const ALLOWED_ORIGIN =  "https://bot-1-8at8.onrender.com"
-// [
-//   "https://plantvsbrainrotstock.com",
-// ];
 export async function POST(req) {
-    // const origin = req.headers.get("origin") || req.headers.get("referer") || "";
-  // console.log(origin,"origin")
-  // Block if origin is not allowed
-  // if (origin !== ALLOWED_ORIGIN) {
-    // console.warn("Blocked request from origin:", origin);
-    // return new Response("Forbidden", { status: 403 });
-  // }
-
-  // const origin = req.headers.get("origin") || req.headers.get("referer") || "";
-  // console.log("Origin:", origin);
-
-  // // ✅ Use exact match (case-insensitive)
-  // const isAllowed = ALLOWED_ORIGINS.some(
-  //   (o) => origin.toLowerCase().startsWith(o.toLowerCase() + "/") || origin.toLowerCase() === o.toLowerCase()
-  // );
-
-  // if (!isAllowed) {
-  //   console.warn("Blocked origin:", origin);
-  //   return new NextResponse("Forbidden", { status: 403 });
-  // }
 
   console.log(2)
 
@@ -149,7 +123,7 @@ export async function POST(req) {
 
   if (!channels[channel]) channels[channel] = [];
   for (const msg of normalized) channels[channel].push(msg);
-
+  console.log(normalized,"message 1")
   // Trim to last MAX_BUFFER messages
   while (channels[channel].length > MAX_BUFFER) channels[channel].shift();
 
