@@ -54,7 +54,7 @@ function parseItemsFromHtml_v1(htmlContent) {
   }
 }
 
-/* ========== Parser 2 (Strong header-based) ========== */
+/* ========== Parser 2 (Strong Header-based) ========== */
 function parseItemsFromHtml_v2(htmlContent) {
   if (!htmlContent) return { seeds: [], gear: [] };
 
@@ -107,10 +107,7 @@ function parseItemsFromHtml_v2(htmlContent) {
 function parseItemsFromHtml(htmlContent) {
   const v1 = parseItemsFromHtml_v1(htmlContent);
   if (v1.seeds.length || v1.gear.length) return v1;
-
-  // fallback to v2 if v1 returned empty
-  const v2 = parseItemsFromHtml_v2(htmlContent);
-  return v2;
+  return parseItemsFromHtml_v2(htmlContent);
 }
 
 /* ========== Stock Card ========== */
@@ -138,10 +135,7 @@ function StockCard({ stock, variant = "current" }) {
         <div className="mb-3">
           <h3 className="text-green-600 font-semibold mb-2">Seeds</h3>
           {sections.seeds.map((item, i) => (
-            <div
-              key={i}
-              className="flex items-center gap-4 mb-1 border-b-2 border-gray-200 pb-1"
-            >
+            <div key={i} className="flex items-center gap-4 mb-1 border-b-2 border-gray-200 pb-1">
               <img src={item.img} alt={item.name} className="w-6 h-6" />
               <span className="font-semibold">{item.name}</span>
               <span className="text-gray-700">{item.quantity}</span>
@@ -154,10 +148,7 @@ function StockCard({ stock, variant = "current" }) {
         <div>
           <h3 className="text-blue-600 font-semibold mb-2">Gear</h3>
           {sections.gear.map((item, i) => (
-            <div
-              key={i}
-              className="flex items-center gap-4 mb-1 border-b-2 border-gray-200 pb-1"
-            >
+            <div key={i} className="flex items-center gap-4 mb-1 border-b-2 border-gray-200 pb-1">
               <img src={item.img} alt={item.name} className="w-6 h-6" />
               <span className="font-semibold">{item.name}</span>
               <span className="text-gray-700">{item.quantity}</span>
@@ -169,33 +160,9 @@ function StockCard({ stock, variant = "current" }) {
   );
 }
 
-/* ========== Generic HTML Card ========== */
-function GenericHtmlCard({ msg, variant = "current" }) {
-  console.log(msg,"this sit hemessage")
-  if (!msg) return null;
-  const isCurrent = variant === "current";
-  const cardClass = isCurrent
-    ? "bg-white shadow-lg border-l-4 border-green-500"
-    : "bg-gray-50 shadow-sm border-l-4 border-gray-300";
-
-  return (
-    <div key={msg.id || msg.createdAt} className={`${cardClass} rounded-lg p-4 mb-4`}>
-      <div className="flex items-center justify-between mb-3">
-        <p className="font-semibold text-gray-700">{msg.author}</p>
-        <small className="text-gray-500">
-          {msg.createdAt ? new Date(msg.createdAt).toLocaleTimeString() : ""}
-        </small>
-      </div>
-      <div className="text-gray-800" dangerouslySetInnerHTML={{ __html: msg.content }} />
-    </div>
-  );
-}
-
 /* ========== Main Unified Layout ========== */
 export default function LiveDiscordUnified() {
   const [channelsState, setChannelsState] = useState({});
-  const [connected, setConnected] = useState(false);
-  const [loading, setLoading] = useState(true);
   const esRef = useRef(null);
 
   useEffect(() => {
@@ -203,35 +170,20 @@ export default function LiveDiscordUnified() {
     const es = new EventSource("/api/discord?stream=true");
     esRef.current = es;
 
-    es.onopen = () => {
-      setConnected(true);
-      setLoading(false);
-      console.log("SSE connected to /api/discord");
-    };
-
     es.onmessage = (ev) => {
       try {
         const data = JSON.parse(ev.data);
+
         if (data.type === "INITIAL_DATA") {
           setChannelsState(data.channels || {});
-          console.log(data.channels,"here is the channel")
         } else if (data.type === "NEW_BATCH") {
           const { channel, messages } = data;
           setChannelsState((prev) => ({
             ...prev,
             [channel]: messages.slice(-2),
           }));
-                    console.log(data.channel,"here is the channel2222")
-
         }
-      } catch (err) {
-        console.error("Failed to parse SSE data:", err, ev.data);
-      }
-    };
-
-    es.onerror = (err) => {
-      console.warn("SSE error:", err);
-      setConnected(false);
+      } catch {}
     };
 
     return () => {
@@ -241,7 +193,6 @@ export default function LiveDiscordUnified() {
   }, []);
 
   const getMessages = (key) => {
-    console.log(key,"keys ")
     const msgs = channelsState[key] || [];
     return {
       current: msgs[msgs.length - 1] || null,
@@ -252,10 +203,7 @@ export default function LiveDiscordUnified() {
   const liveStock = getMessages("LiveStock");
   const weather = getMessages("Weather");
   const predictor = getMessages("StockPredictor");
-  useEffect(() => {
-    console.log(liveStock,weather,predictor,"all of those ")
-  }, [liveStock, weather, predictor]);
-  
+
   return (
     <div className="max-w-6xl mx-auto sm:p-4">
       <div className="flex flex-col gap-6">
@@ -270,43 +218,39 @@ export default function LiveDiscordUnified() {
         <div className="bg-gray-50 rounded-xl sm:p-6 p-1 shadow">
           <h2 className="text-xl font-semibold mb-4 text-blue-700">Weather</h2>
           <h3 className="text-lg font-semibold mb-2 text-green-600">Current</h3>
-          <GenericHtmlCard msg={weather.current} />
+          <StockCard stock={weather.current} />
+
           <h3 className="text-lg font-semibold mb-2 text-gray-600">Previous</h3>
-          <GenericHtmlCard msg={weather.previous} variant="past" />
+          <StockCard stock={weather.previous} variant="past" />
         </div>
 
         {/* Stock Predictor Section */}
         <div className="bg-gray-50 rounded-xl sm:p-6 p-1 shadow">
           <h2 className="text-xl font-semibold mb-4 text-purple-700">Stock Predictor</h2>
           <h3 className="text-lg font-semibold mb-2 text-green-600">Current</h3>
-          <GenericHtmlCard msg={predictor.current} />
+          <StockCard stock={predictor.current} />
+
+          <h3 className="text-lg font-semibold mb-2 text-gray-600">Previous</h3>
+          <StockCard stock={predictor.previous} variant="past" />
         </div>
       </div>
     </div>
   );
 }
 
-
-
-
-
 // "use client";
 
 // import { useEffect, useRef, useState } from "react";
 
-// /* ========== Helper: parseItemsFromHtml ========== */
-// function parseItemsFromHtml(htmlContent) {
+// /* ========== Parser 1 (Section-based) ========== */
+// function parseItemsFromHtml_v1(htmlContent) {
 //   if (!htmlContent) return { seeds: [], gear: [] };
 
 //   try {
-//     // Convert to lowercase for section matching
 //     const lower = htmlContent.toLowerCase();
-
-//     // Find section indexes
 //     const seedsStart = lower.indexOf("seeds stock:");
 //     const gearStart = lower.indexOf("gear stock:");
 
-//     // Extract section HTML substrings
 //     const seedsHtml =
 //       seedsStart !== -1 && gearStart !== -1
 //         ? htmlContent.slice(seedsStart + 12, gearStart)
@@ -314,10 +258,8 @@ export default function LiveDiscordUnified() {
 //         ? htmlContent.slice(seedsStart + 12)
 //         : "";
 
-//     const gearHtml =
-//       gearStart !== -1 ? htmlContent.slice(gearStart + 11) : "";
+//     const gearHtml = gearStart !== -1 ? htmlContent.slice(gearStart + 11) : "";
 
-//     // Helper: parse each section and extract <img> tags with quantities
 //     const parseSection = (sectionHtml) => {
 //       const parser = new DOMParser();
 //       const doc = parser.parseFromString(sectionHtml, "text/html");
@@ -326,19 +268,16 @@ export default function LiveDiscordUnified() {
 //       doc.querySelectorAll("img").forEach((el) => {
 //         let quantity = "";
 
-//         // Case 1: Quantity is a <strong> immediately after <img>
 //         if (el.nextElementSibling?.tagName === "STRONG") {
 //           quantity = el.nextElementSibling.textContent.trim();
-//         }
-//         // Case 2: Quantity is a plain text node
-//         else if (el.nextSibling?.nodeType === Node.TEXT_NODE) {
+//         } else if (el.nextSibling?.nodeType === Node.TEXT_NODE) {
 //           quantity = el.nextSibling.textContent.trim();
 //         }
 
 //         items.push({
 //           img: el.src,
 //           name: el.alt || "",
-//           quantity: quantity,
+//           quantity,
 //         });
 //       });
 
@@ -350,277 +289,75 @@ export default function LiveDiscordUnified() {
 //       gear: parseSection(gearHtml),
 //     };
 //   } catch (err) {
-//     console.error("parseItems error:", err);
+//     console.error("parseItems_v1 error:", err);
 //     return { seeds: [], gear: [] };
 //   }
 // }
 
-// /* ========== Card render helpers ========== */
-// function StockCard({ stock, variant = "current" }) {
-//   if (!stock) return null;
-//   const sections = parseItemsFromHtml(stock.content);
-
-//   const isCurrent = variant === "current";
-//   const cardClass = isCurrent
-//     ? "bg-white shadow-lg border-l-4 border-green-500"
-//     : "bg-gray-50 shadow-sm border-l-4 border-gray-300";
-
-//   return (
-//     <div
-//       key={stock.id || stock.createdAt}
-//       className={`${cardClass} rounded-lg p-4 mb-3.5`}
-//     >
-//       <div className="flex items-center justify-between mb-3">
-//         <div className="flex items-center gap-3">
-//           <p className="font-semibold text-gray-700">{stock.author}</p>
-//         </div>
-//         <small className="text-gray-500">
-//           {stock.createdAt
-//             ? new Date(stock.createdAt).toLocaleTimeString()
-//             : ""}
-//         </small>
-//       </div>
-
-//       {/* Seeds Section */}
-//       {sections.seeds?.length > 0 && (
-//         <div className="mb-3">
-//           <h3 className="text-green-600 font-semibold mb-2">Seeds</h3>
-//           {sections.seeds.map((item, i) => (
-//             <div
-//               key={i}
-//               className="flex items-center gap-4 mb-1 border-b-2 border-gray-200 pb-1"
-//             >
-//               <img src={item.img} alt={item.name} className="w-6 h-6" />
-//               <span className="font-semibold">{item.name}</span>
-//               <span className="text-gray-700">{item.quantity}</span>
-//             </div>
-//           ))}
-//         </div>
-//       )}
-
-//       {/* Gear Section */}
-//       {sections.gear?.length > 0 && (
-//         <div>
-//           <h3 className="text-blue-600 font-semibold mb-2">Gear</h3>
-//           {sections.gear.map((item, i) => (
-//             <div
-//               key={i}
-//               className="flex items-center gap-4 mb-1 border-b-2 border-gray-200 pb-1"
-//             >
-//               <img src={item.img} alt={item.name} className="w-6 h-6" />
-//               <span className="font-semibold">{item.name}</span>
-//               <span className="text-gray-700">{item.quantity}</span>
-//             </div>
-//           ))}
-//         </div>
-//       )}
-//     </div>
-//   );
-// }
-
-// /* ========== Generic Card ========== */
-// function GenericHtmlCard({ msg, variant = "current" }) {
-//   if (!msg) return null;
-//   const isCurrent = variant === "current";
-//   const cardClass = isCurrent
-//     ? "bg-white shadow-lg border-l-4 border-green-500"
-//     : "bg-gray-50 shadow-sm border-l-4 border-gray-300";
-
-//   return (
-//     <div
-//       key={msg.id || msg.createdAt}
-//       className={`${cardClass} rounded-lg p-4 mb-4`}
-//     >
-//       <div className="flex items-center justify-between mb-3">
-//         <div className="flex items-center gap-3">
-//           <p className="font-semibold text-gray-700">{msg.author}</p>
-//         </div>
-//         <small className="text-gray-500">
-//           {msg.createdAt
-//             ? new Date(msg.createdAt).toLocaleTimeString()
-//             : ""}
-//         </small>
-//       </div>
-
-//       <div
-//         className="text-gray-800"
-//         dangerouslySetInnerHTML={{ __html: msg.content }}
-//       />
-//     </div>
-//   );
-// }
-
-// /* ========== Main Unified Layout ========== */
-// export default function LiveDiscordUnified() {
-//   const [channelsState, setChannelsState] = useState({});
-//   const [connected, setConnected] = useState(false);
-//   const [loading, setLoading] = useState(true);
-//   const esRef = useRef(null);
-
-//   useEffect(() => {
-//     if (esRef.current) esRef.current.close();
-//     const es = new EventSource("/api/discord?stream=true");
-//     esRef.current = es;
-
-//     es.onopen = () => {
-//       setConnected(true);
-//       setLoading(false);
-//       console.log("SSE connected to /api/discord");
-//     };
-
-//     es.onmessage = (ev) => {
-//       try {
-//         const data = JSON.parse(ev.data);
-//         if (data.type === "INITIAL_DATA") {
-//           setChannelsState(data.channels || {});
-//         } else if (data.type === "NEW_BATCH") {
-//           const { channel, messages } = data;
-//           setChannelsState((prev) => ({
-//             ...prev,
-//             [channel]: messages.slice(-2),
-//           }));
-//         }
-//       } catch (err) {
-//         console.error("Failed to parse SSE data:", err, ev.data);
-//       }
-//     };
-
-//     es.onerror = (err) => {
-//       console.warn("SSE error:", err);
-//       setConnected(false);
-//     };
-
-//     return () => {
-//       es.close();
-//       esRef.current = null;
-//     };
-//   }, []);
-
-//   const getMessages = (key) => {
-//     const msgs = channelsState[key] || [];
-//     return {
-//       current: msgs[msgs.length - 1] || null,
-//       previous: msgs[msgs.length - 2] || null,
-//     };
-//   };
-
-//   const liveStock = getMessages("LiveStock");
-//   const weather = getMessages("Weather");
-//   const predictor = getMessages("StockPredictor");
-
-//   return (
-//     <div className="max-w-6xl mx-auto sm:p-4">
-//       <div className="flex flex-col gap-6">
-//         {/* Live Stock Section */}
-//         <div className="bg-gray-50 rounded-xl sm:p-6 p-1 shadow">
-//           <h2 className="text-xl font-semibold mb-4 text-green-700">
-//             Live Stock
-//           </h2>
-//           <h3 className="text-lg font-semibold mb-2 text-green-600">
-//             Current
-//           </h3>
-//           <StockCard stock={liveStock.current} />
-//         </div>
-
-//         {/* Weather Section */}
-//         <div className="bg-gray-50 rounded-xl sm:p-6 p-1 shadow">
-//           <h2 className="text-xl font-semibold mb-4 text-blue-700">
-//             Weather
-//           </h2>
-//           <h3 className="text-lg font-semibold mb-2 text-green-600">
-//             Current
-//           </h3>
-//           <GenericHtmlCard msg={weather.current} />
-//           <h3 className="text-lg font-semibold mb-2 text-gray-600">
-//             Previous
-//           </h3>
-//           <GenericHtmlCard msg={weather.previous} variant="past" />
-//         </div>
-
-//         {/* Stock Predictor Section */}
-//         <div className="bg-gray-50 rounded-xl sm:p-6 p-1 shadow">
-//           <h2 className="text-xl font-semibold mb-4 text-purple-700">
-//             Stock Predictor
-//           </h2>
-//           <h3 className="text-lg font-semibold mb-2 text-green-600">
-//             Current
-//           </h3>
-//           <GenericHtmlCard msg={predictor.current} />
-//         </div>
-//       </div>
-//     </div>
-//   );
-// }
-
-
-
-
-
-
-
-
-
-
-
-// "use client";
-
-// import { useEffect, useRef, useState } from "react";
-
-// /* ========== Helper: parseItemsFromHtml ========== */
-// function parseItemsFromHtml(htmlContent) {
+// /* ========== Parser 2 (Strong header-based) ========== */
+// function parseItemsFromHtml_v2(htmlContent) {
 //   if (!htmlContent) return { seeds: [], gear: [] };
 
 //   try {
-//     // Convert to lowercase for section matching
-//     const lower = htmlContent.toLowerCase();
+//     const parser = new DOMParser();
+//     const doc = parser.parseFromString(htmlContent, "text/html");
 
-//     // Find section indexes
-//     const seedsStart = lower.indexOf("seeds stock:");
-//     const gearStart = lower.indexOf("gear stock:");
+//     const extractSection = (name) => {
+//       const header = Array.from(doc.querySelectorAll("strong")).find(
+//         (el) => el.textContent.trim().toLowerCase() === name.toLowerCase()
+//       );
+//       if (!header) return [];
 
-//     // Extract section HTML substrings
-//     const seedsHtml =
-//       seedsStart !== -1 && gearStart !== -1
-//         ? htmlContent.slice(seedsStart + 12, gearStart)
-//         : seedsStart !== -1
-//         ? htmlContent.slice(seedsStart + 12)
-//         : "";
-
-//     const gearHtml =
-//       gearStart !== -1 ? htmlContent.slice(gearStart + 11) : "";
-
-//     // Helper: parse each section and extract <img> tags with quantities
-//     const parseSection = (sectionHtml) => {
-//       const parser = new DOMParser();
-//       const doc = parser.parseFromString(sectionHtml, "text/html");
 //       const items = [];
+//       let el = header.nextElementSibling;
 
-//       doc.querySelectorAll("img").forEach((el) => {
-//         items.push({
-//           img: el.src,
-//           name: el.alt || "",
-//           quantity: el.nextSibling?.textContent?.trim() || "",
-//         });
-//       });
+//       while (el && el.tagName !== "STRONG") {
+//         if (el.tagName === "IMG") {
+//           items.push({
+//             img: el.src,
+//             name: el.alt,
+//             quantity: el.nextSibling?.textContent?.trim() || "",
+//           });
+//         } else if (el.tagName === "DIV") {
+//           el.querySelectorAll("img").forEach((i) =>
+//             items.push({
+//               img: i.src,
+//               name: i.alt,
+//               quantity: i.nextSibling?.textContent?.trim() || "",
+//             })
+//           );
+//         }
+//         el = el.nextElementSibling;
+//       }
 
 //       return items;
 //     };
 
 //     return {
-//       seeds: parseSection(seedsHtml),
-//       gear: parseSection(gearHtml),
+//       seeds: extractSection("Seeds"),
+//       gear: extractSection("Gear"),
 //     };
 //   } catch (err) {
-//     console.error("parseItems error:", err);
+//     console.error("parseItems_v2 error:", err);
 //     return { seeds: [], gear: [] };
 //   }
 // }
 
-// /* ========== Card render helpers ========== */
+// /* ========== Unified Parser (Fallback Mechanism) ========== */
+// function parseItemsFromHtml(htmlContent) {
+//   const v1 = parseItemsFromHtml_v1(htmlContent);
+//   if (v1.seeds.length || v1.gear.length) return v1;
+
+//   // fallback to v2 if v1 returned empty
+//   const v2 = parseItemsFromHtml_v2(htmlContent);
+//   return v2;
+// }
+
+// /* ========== Stock Card ========== */
 // function StockCard({ stock, variant = "current" }) {
 //   if (!stock) return null;
-//   const sections = parseItemsFromHtml(stock.content);
 
+//   const sections = parseItemsFromHtml(stock.content);
 //   const isCurrent = variant === "current";
 //   const cardClass = isCurrent
 //     ? "bg-white shadow-lg border-l-4 border-green-500"
@@ -637,7 +374,6 @@ export default function LiveDiscordUnified() {
 //         </small>
 //       </div>
 
-//       {/* Seeds Section */}
 //       {sections.seeds?.length > 0 && (
 //         <div className="mb-3">
 //           <h3 className="text-green-600 font-semibold mb-2">Seeds</h3>
@@ -654,7 +390,6 @@ export default function LiveDiscordUnified() {
 //         </div>
 //       )}
 
-//       {/* Gear Section */}
 //       {sections.gear?.length > 0 && (
 //         <div>
 //           <h3 className="text-blue-600 font-semibold mb-2">Gear</h3>
@@ -674,8 +409,9 @@ export default function LiveDiscordUnified() {
 //   );
 // }
 
-// /* ========== Generic Card ========== */
+// /* ========== Generic HTML Card ========== */
 // function GenericHtmlCard({ msg, variant = "current" }) {
+//   console.log(msg,"this sit hemessage")
 //   if (!msg) return null;
 //   const isCurrent = variant === "current";
 //   const cardClass = isCurrent
@@ -685,14 +421,11 @@ export default function LiveDiscordUnified() {
 //   return (
 //     <div key={msg.id || msg.createdAt} className={`${cardClass} rounded-lg p-4 mb-4`}>
 //       <div className="flex items-center justify-between mb-3">
-//         <div className="flex items-center gap-3">
-//           <p className="font-semibold text-gray-700">{msg.author}</p>
-//         </div>
+//         <p className="font-semibold text-gray-700">{msg.author}</p>
 //         <small className="text-gray-500">
 //           {msg.createdAt ? new Date(msg.createdAt).toLocaleTimeString() : ""}
 //         </small>
 //       </div>
-
 //       <div className="text-gray-800" dangerouslySetInnerHTML={{ __html: msg.content }} />
 //     </div>
 //   );
@@ -721,9 +454,15 @@ export default function LiveDiscordUnified() {
 //         const data = JSON.parse(ev.data);
 //         if (data.type === "INITIAL_DATA") {
 //           setChannelsState(data.channels || {});
+//           console.log(data.channels,"here is the channel")
 //         } else if (data.type === "NEW_BATCH") {
 //           const { channel, messages } = data;
-//           setChannelsState((prev) => ({ ...prev, [channel]: messages.slice(-2) }));
+//           setChannelsState((prev) => ({
+//             ...prev,
+//             [channel]: messages.slice(-2),
+//           }));
+//                     console.log(data.channel,"here is the channel2222")
+
 //         }
 //       } catch (err) {
 //         console.error("Failed to parse SSE data:", err, ev.data);
@@ -742,6 +481,7 @@ export default function LiveDiscordUnified() {
 //   }, []);
 
 //   const getMessages = (key) => {
+//     console.log(key,"keys ")
 //     const msgs = channelsState[key] || [];
 //     return {
 //       current: msgs[msgs.length - 1] || null,
@@ -752,7 +492,10 @@ export default function LiveDiscordUnified() {
 //   const liveStock = getMessages("LiveStock");
 //   const weather = getMessages("Weather");
 //   const predictor = getMessages("StockPredictor");
-
+//   useEffect(() => {
+//     console.log(liveStock,weather,predictor,"all of those ")
+//   }, [liveStock, weather, predictor]);
+  
 //   return (
 //     <div className="max-w-6xl mx-auto sm:p-4">
 //       <div className="flex flex-col gap-6">
@@ -782,264 +525,6 @@ export default function LiveDiscordUnified() {
 //     </div>
 //   );
 // }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-// // app/discord/page.js
-// "use client";
-
-// import { useEffect, useRef, useState } from "react";
-
-// /* ========== Helper: parseItemsFromHtml ========== */
-// function parseItemsFromHtml(htmlContent) {
-//   if (!htmlContent) return { seeds: [], gear: [] };
-//   try {
-//     const parser = new DOMParser();
-//     const doc = parser.parseFromString(htmlContent, "text/html");
-
-//     const extractSection = (name) => {
-//       const header = Array.from(doc.querySelectorAll("strong")).find(
-//         (el) => el.textContent.trim() === name
-//       );
-//       if (!header) return [];
-//       const items = [];
-//       let el = header.nextElementSibling;
-//       while (el && el.tagName !== "STRONG") {
-//         if (el.tagName === "IMG") {
-//           items.push({
-//             img: el.src,
-//             name: el.alt,
-//             quantity: el.nextSibling?.textContent?.trim() || "",
-//           });
-//         } else if (el.tagName === "DIV") {
-//           el.querySelectorAll("img").forEach((i) =>
-//             items.push({
-//               img: i.src,
-//               name: i.alt,
-//               quantity: i.nextSibling?.textContent?.trim() || "",
-//             })
-//           );
-//         }
-//         el = el.nextElementSibling;
-//       }
-//       return items;
-//     };
-
-//     return { seeds: extractSection("Seeds"), gear: extractSection("Gear") };
-//   } catch (err) {
-//     console.error("parseItems error:", err);
-//     return { seeds: [], gear: [] };
-//   }
-// }
-
-// /* ========== Card render helpers ========== */
-// function StockCard({ stock, variant = "current" }) {
-//   if (!stock) return null;
-//   console.log(stock,"stock 1")
-//   console.log(variant,"variant 1")
-//   const sections = parseItemsFromHtml(stock.content);
-//   console.log(sections,"sections")
-//   const isCurrent = variant === "current";
-//   const cardClass = isCurrent
-//     ? "bg-white shadow-lg border-l-4 border-green-500"
-//     : "bg-gray-50 shadow-sm border-l-4 border-gray-300";
-
-//   return (
-//     <div key={stock.id || stock.createdAt} className={`${cardClass} rounded-lg p-4 mb-3.5`}>
-//       <div className="flex items-center justify-between mb-3">
-//         <div className="flex items-center gap-3">
-//           {/* <img
-//             src="https://cdn-icons-png.flaticon.com/512/616/616408.png"
-//             alt="Bot Logo"
-//             className="w-10 h-10 rounded-full"
-//           /> */}
-//           <p className="font-semibold text-gray-700">{stock.author}</p>
-//         </div>
-//         <small className="text-gray-500">
-//           {stock.createdAt ? new Date(stock.createdAt).toLocaleTimeString() : ""}
-//         </small>
-//       </div>
-
-//       {sections.seeds?.length > 0 && (
-//         <div className="mb-3">
-//           <h3 className="text-green-600 font-semibold mb-2">Seeds</h3>
-//           {sections.seeds.map((item, i) => (
-//             <div
-//               key={i}
-//               className="flex items-center gap-4 mb-1 border-b-2 border-gray-200 pb-1"
-//             >
-//               <img src={item.img} alt={item.name} className="w-6 h-6" />
-//               <span className="font-semibold">{item.quantity}</span>
-//             </div>
-//           ))}
-//         </div>
-//       )}
-
-//       {sections.GearStock?.length > 0 && (
-//         <div>
-//           <h3 className="text-blue-600 font-semibold mb-2">Gear</h3>
-//           {sections.gear.map((item, i) => (
-//             <div
-//               key={i}
-//               className="flex items-center gap-4 mb-1 border-b-2 border-gray-200 pb-1"
-//             >
-//               <img src={item.img} alt={item.name} className="w-6 h-6" />
-//               <span className="font-semibold">{item.quantity}</span>
-//             </div>
-//           ))}
-//         </div>
-//       )}
-//     </div>
-//   );
-// }
-
-// function GenericHtmlCard({ msg, variant = "current" }) {
-//   if (!msg) return null;
-//   const isCurrent = variant === "current";
-//   const cardClass = isCurrent
-//     ? "bg-white shadow-lg border-l-4 border-green-500"
-//     : "bg-gray-50 shadow-sm border-l-4 border-gray-300";
-
-//   return (
-//     <div key={msg.id || msg.createdAt} className={`${cardClass} rounded-lg p-4 mb-4`}>
-//       <div className="flex items-center justify-between mb-3">
-//         <div className="flex items-center gap-3">
-//           {/* <img
-//             src="https://cdn-icons-png.flaticon.com/512/616/616408.png"
-//             alt="Bot Logo"
-//             className="w-10 h-10 rounded-full"
-//           /> */}
-//           <p className="font-semibold text-gray-700">{msg.author}</p>
-//         </div>
-//         <small className="text-gray-500">
-//           {msg.createdAt ? new Date(msg.createdAt).toLocaleTimeString() : ""}
-//         </small>
-//       </div>
-
-//       <div className="text-gray-800" dangerouslySetInnerHTML={{ __html: msg.content }} />
-//     </div>
-//   );
-// }
-
-// /* ========== Main Unified Layout ========== */
-// export default function LiveDiscordUnified() {
-//   const [channelsState, setChannelsState] = useState({});
-//   const [connected, setConnected] = useState(false);
-//   const [loading, setLoading] = useState(true);
-//   const esRef = useRef(null);
-
-//   useEffect(() => {
-//     if (esRef.current) esRef.current.close();
-//     const es = new EventSource("/api/discord?stream=true");
-//     esRef.current = es;
-
-//     es.onopen = () => {
-//       setConnected(true);
-//       setLoading(false);
-//       console.log("SSE connected to /api/discord");
-//     };
-
-//     es.onmessage = (ev) => {
-//       try {
-//         const data = JSON.parse(ev.data);
-//         if (data.type === "INITIAL_DATA") {
-//           setChannelsState(data.channels || {});
-//         } else if (data.type === "NEW_BATCH") {
-//           const { channel, messages } = data;
-//           setChannelsState((prev) => ({ ...prev, [channel]: messages.slice(-2) }));
-//         }
-//       } catch (err) {
-//         console.error("Failed to parse SSE data:", err, ev.data);
-//       }
-//     };
-
-//     es.onerror = (err) => {
-//       console.warn("SSE error:", err);
-//       setConnected(false);
-//     };
-
-//     return () => {
-//       es.close();
-//       esRef.current = null;
-//     };
-//   }, []);
-
-//   const getMessages = (key) => {
-//     const msgs = channelsState[key] || [];
-//     return {
-//       current: msgs[msgs.length - 1] || null,
-//       previous: msgs[msgs.length - 2] || null,
-//     };
-//   };
-
-//   const liveStock = getMessages("LiveStock");
-//   const weather = getMessages("Weather");
-//   const predictor = getMessages("StockPredictor");
-
-//   return (
-//     <div className="max-w-6xl mx-auto sm:p-4">
-//       {/* <div className="flex items-center justify-between pb-6">
-//         <div className="flex items-center gap-3">
-//           <div
-//             className={`w-3 h-3 rounded-full ${connected ? "bg-green-500" : "bg-red-500"}`}
-//             title={connected ? "Connected" : "Disconnected"}
-//           />
-//         </div>
-//       </div> */}
-
-//       {/* Layout: LiveStock on top, Weather + Predictor side-by-side on large, stacked on small */}
-//       <div className="flex flex-col gap-6">
-//         {/* Live Stock (top always full width) */}
-//         <div className="bg-gray-50 rounded-xl sm:p-6 p-1 shadow">
-//           <h2 className="text-xl font-semibold mb-4 text-green-700">Live Stock</h2>
-//           <h3 className="text-lg font-semibold mb-2 text-green-600">Current</h3>
-//           <StockCard stock={liveStock.current} />
-//           {/* <h3 className="text-lg font-semibold mb-2 text-gray-600">Previous</h3>
-//           <StockCard stock={liveStock.previous} variant="past" /> */}
-//         </div>
-
-//         {/* Bottom grid for Weather + Predictor */}
-//           {/* Weather Section */}
-//           <div className="bg-gray-50 rounded-xl sm:p-6 p-1 shadow">
-//             <h2 className="text-xl font-semibold mb-4 text-blue-700">Weather</h2>
-//             <h3 className="text-lg font-semibold mb-2 text-green-600">Current</h3>
-//             <GenericHtmlCard msg={weather.current} />
-//             <h3 className="text-lg font-semibold mb-2 text-gray-600">Previous</h3>
-//             <GenericHtmlCard msg={weather.previous} variant="past" />
-//           </div>
-
-//           {/* Stock Predictor Section */}
-//           <div className="bg-gray-50 rounded-xl sm:p-6 p-1 shadow">
-//             <h2 className="text-xl font-semibold mb-4 text-purple-700">Stock Predictor</h2>
-//             <h3 className="text-lg font-semibold mb-2 text-green-600">Current</h3>
-//             <GenericHtmlCard msg={predictor.current} />
-//             {/* <h3 className="text-lg font-semibold mb-2 text-gray-600">Previous</h3> */}
-//             {/* <GenericHtmlCard msg={predictor.previous} variant="past" /> */}
-//           </div>
-//       </div>
-//     </div>
-//   );
-// }
-
-
-
-
-
 
 
 
