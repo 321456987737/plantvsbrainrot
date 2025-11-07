@@ -250,7 +250,7 @@ function WeatherCard({ stock }) {
   if (!stock) return null;
 
   const parsed = parseWeatherHtml(stock.content);
-
+  console.log(stock,"stock")
   return (
     <div className="bg-blue-50 p-4 rounded-lg mb-3.5 border-l-4 border-blue-400 shadow">
       <div className="flex justify-between items-center mb-2">
@@ -258,6 +258,9 @@ function WeatherCard({ stock }) {
         <small className="text-gray-500">
           {stock.createdAt ? new Date(stock.createdAt).toLocaleTimeString() : ""}
         </small>
+        <div>
+          {stock.content}
+        </div>
       </div>
 
       {parsed ? (
