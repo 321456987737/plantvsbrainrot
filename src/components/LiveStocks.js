@@ -258,17 +258,19 @@ function WeatherCard({ stock }) {
         <small className="text-gray-500">
           {stock.createdAt ? new Date(stock.createdAt).toLocaleTimeString() : ""}
         </small>
-        <div>
-          {stock.content}
-        </div>
       </div>
 
       {parsed ? (
+        <>
+        <div>
+          {parsed.content}
+        </div>
         <div>
           <p className="text-xl font-bold text-blue-700">{parsed.type}</p>
           <p className="text-gray-700">Ends: {parsed.ends}</p>
           <p className="text-gray-700">Duration: {parsed.duration}</p>
         </div>
+        </>
       ) : (
         <p className="text-gray-700 whitespace-pre-wrap">{stock.content}</p>
       )}
