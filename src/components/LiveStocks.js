@@ -303,9 +303,9 @@ function WeatherCard({ stock }) {
 
       {parsed ? (
         <>
-        <div>
+        {/* <div>
           {parsed.content}
-        </div>
+        </div> */}
         <div>
           <p className="text-xl font-bold text-blue-700">{parsed.type}</p>
           <p className="text-gray-700">Ends: {parsed.ends}</p>
