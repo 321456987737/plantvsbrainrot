@@ -163,24 +163,23 @@ function parseWeatherHtml(htmlContent) {
     const parser = new DOMParser();
     const doc = parser.parseFromString(htmlContent, "text/html");
 
-    const lines = doc.body.textContent.trim().split("\n");
+    const lines = doc.body.textContent
+      .trim()
+      .split("\n")
+      .map((l) => l.trim())
+      .filter((l) => l.length > 0);
 
     let type = "";
     let ends = "";
     let duration = "";
 
+    // ✅ First non-empty line becomes the weather type (general solution)
+    if (lines.length > 0) {
+      type = lines[0];
+    }
+
+    // ✅ Loop through for Ends & Duration
     lines.forEach((line) => {
-      line = line.trim();
-
-      if (
-        line.startsWith("❄️") ||
-        line.startsWith("⛈️") ||
-        line.startsWith("🌧️") ||
-        line.startsWith("🔥")
-      ) {
-        type = line;
-      }
-
       if (line.startsWith("- Ends:")) {
         ends = line.replace("- Ends:", "").trim();
       }
@@ -196,6 +195,47 @@ function parseWeatherHtml(htmlContent) {
     return null;
   }
 }
+
+// function parseWeatherHtml(htmlContent) {
+//   if (!htmlContent) return null;
+
+//   try {
+//     const parser = new DOMParser();
+//     const doc = parser.parseFromString(htmlContent, "text/html");
+
+//     const lines = doc.body.textContent.trim().split("\n");
+
+//     let type = "";
+//     let ends = "";
+//     let duration = "";
+
+//     lines.forEach((line) => {
+//       line = line.trim();
+
+//       if (
+//         line.startsWith("❄️") ||
+//         line.startsWith("⛈️") ||
+//         line.startsWith("🌧️") ||
+//         line.startsWith("🔥")
+//       ) {
+//         type = line;
+//       }
+
+//       if (line.startsWith("- Ends:")) {
+//         ends = line.replace("- Ends:", "").trim();
+//       }
+
+//       if (line.startsWith("- Duration:")) {
+//         duration = line.replace("- Duration:", "").trim();
+//       }
+//     });
+
+//     return { type, ends, duration };
+//   } catch (err) {
+//     console.error("Weather parser error:", err);
+//     return null;
+//   }
+// }
 
 /* ===========================================================
    🌱 STOCK CARD (Seeds + Gear)
@@ -250,6 +290,7 @@ function WeatherCard({ stock }) {
   if (!stock) return null;
 
   const parsed = parseWeatherHtml(stock.content);
+  console.log(parsed,"parsed")
   console.log(stock,"stock")
   return (
     <div className="bg-blue-50 p-4 rounded-lg mb-3.5 border-l-4 border-blue-400 shadow">
