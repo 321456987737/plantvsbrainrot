@@ -173,15 +173,15 @@ function parseWeatherHtml(htmlContent) {
     let ends = "";
     let duration = "";
 
-    // ✅ First non-empty line becomes the weather type (general solution)
+    // ✅ First non-empty line = weather type
     if (lines.length > 0) {
       type = lines[0];
     }
 
-    // ✅ Loop through for Ends & Duration
+    // ✅ Loop through for Ends/Expires & Duration
     lines.forEach((line) => {
-      if (line.startsWith("- Ends:")) {
-        ends = line.replace("- Ends:", "").trim();
+      if (line.startsWith("- Ends:") || line.startsWith("- Expires:")) {
+        ends = line.replace("- Ends:", "").replace("- Expires:", "").trim();
       }
 
       if (line.startsWith("- Duration:")) {
@@ -203,24 +203,23 @@ function parseWeatherHtml(htmlContent) {
 //     const parser = new DOMParser();
 //     const doc = parser.parseFromString(htmlContent, "text/html");
 
-//     const lines = doc.body.textContent.trim().split("\n");
+//     const lines = doc.body.textContent
+//       .trim()
+//       .split("\n")
+//       .map((l) => l.trim())
+//       .filter((l) => l.length > 0);
 
 //     let type = "";
 //     let ends = "";
 //     let duration = "";
 
+//     // ✅ First non-empty line becomes the weather type (general solution)
+//     if (lines.length > 0) {
+//       type = lines[0];
+//     }
+
+//     // ✅ Loop through for Ends & Duration
 //     lines.forEach((line) => {
-//       line = line.trim();
-
-//       if (
-//         line.startsWith("❄️") ||
-//         line.startsWith("⛈️") ||
-//         line.startsWith("🌧️") ||
-//         line.startsWith("🔥")
-//       ) {
-//         type = line;
-//       }
-
 //       if (line.startsWith("- Ends:")) {
 //         ends = line.replace("- Ends:", "").trim();
 //       }
@@ -308,7 +307,7 @@ function WeatherCard({ stock }) {
         </div> */}
         <div>
           <p className="text-xl font-bold text-blue-700">{parsed.type}</p>
-          <p className="text-gray-700">Ends: {parsed.ends}</p>
+          <p className="text-gray-700">Ends: {stock.ex}</p>
           <p className="text-gray-700">Duration: {parsed.duration}</p>
         </div>
         </>
@@ -324,9 +323,9 @@ function WeatherCard({ stock }) {
 =========================================================== */
 function PredictorCard({ stock }) {
   if (!stock) return null;
-
-  const parsed = parsePredictorHtml(stock.content);
-
+  console.log(stock, "predictor stock")
+  const parsed = parsePredictorHtml(stock.content); 
+  console.log(parsed,"predictor parsed")
   return (
     <div className="bg-purple-50 p-4 rounded-lg mb-3.5 border-l-4 border-purple-400 shadow">
       <div className="flex justify-between items-center mb-2">
