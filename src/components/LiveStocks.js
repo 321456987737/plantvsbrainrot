@@ -180,7 +180,7 @@ function parseWeatherHtml(htmlContent) {
 
     // ✅ Loop through for Ends/Expires & Duration
     lines.forEach((line) => {
-      if (line.startsWith("- Ends:") || line.startsWith("- Expires:")) {
+      if (line.startsWith("- Ends:") || line.startsWith("- Expire:")) {
         ends = line.replace("- Ends:", "").replace("- Expires:", "").trim();
       }
 
