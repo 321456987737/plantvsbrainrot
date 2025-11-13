@@ -117,34 +117,40 @@ function parsePredictorHtml(htmlContent) {
   if (!htmlContent) return [];
 
   try {
+    // Parse HTML into DOM
     const parser = new DOMParser();
     const doc = parser.parseFromString(htmlContent, "text/html");
 
     const items = [];
-    let currentTitle = "";
-    let timeSlots = [];
+    const strongTags = [...doc.querySelectorAll("strong")];
+    const allText = doc.body.innerHTML;
 
-    doc.body.childNodes.forEach((node) => {
-      if (node.nodeType === Node.ELEMENT_NODE && node.tagName === "STRONG") {
-        if (currentTitle && timeSlots.length) {
-          items.push({ title: currentTitle, times: [...timeSlots] });
-        }
+    // Regular expression to extract Discord timestamps
+    const timeRegex = /<t:(\d+):f>/g;
 
-        currentTitle = node.textContent.trim();
-        timeSlots = [];
+    // For each stock name in <strong> tags
+    strongTags.forEach((tag, index) => {
+      const title = tag.textContent.trim();
+
+      // Get the part of HTML starting after this <strong> until next <strong> or end
+      const nextTag = strongTags[index + 1];
+      const sectionHTML = nextTag
+        ? allText.substring(allText.indexOf(tag.outerHTML), allText.indexOf(nextTag.outerHTML))
+        : allText.substring(allText.indexOf(tag.outerHTML));
+
+      // Extract timestamps from this section
+      const times = [];
+      let match;
+      while ((match = timeRegex.exec(sectionHTML)) !== null) {
+        const unixSeconds = Number(match[1]);
+        const localTime = new Date(unixSeconds * 1000).toLocaleString();
+        times.push(localTime);
       }
 
-      if (node.nodeType === Node.TEXT_NODE || node.tagName === "T") {
-        const text = node.textContent.trim();
-        if (text.startsWith("<t:") || text.includes(":")) {
-          timeSlots.push(text);
-        }
+      if (times.length > 0) {
+        items.push({ title, times });
       }
     });
-
-    if (currentTitle && timeSlots.length) {
-      items.push({ title: currentTitle, times: timeSlots });
-    }
 
     return items;
   } catch (err) {
@@ -152,6 +158,46 @@ function parsePredictorHtml(htmlContent) {
     return [];
   }
 }
+
+// function parsePredictorHtml(htmlContent) {
+//   if (!htmlContent) return [];
+
+//   try {
+//     const parser = new DOMParser();
+//     const doc = parser.parseFromString(htmlContent, "text/html");
+
+//     const items = [];
+//     let currentTitle = "";
+//     let timeSlots = [];
+
+//     doc.body.childNodes.forEach((node) => {
+//       if (node.nodeType === Node.ELEMENT_NODE && node.tagName === "STRONG") {
+//         if (currentTitle && timeSlots.length) {
+//           items.push({ title: currentTitle, times: [...timeSlots] });
+//         }
+
+//         currentTitle = node.textContent.trim();
+//         timeSlots = [];
+//       }
+
+//       if (node.nodeType === Node.TEXT_NODE || node.tagName === "T") {
+//         const text = node.textContent.trim();
+//         if (text.startsWith("<t:") || text.includes(":")) {
+//           timeSlots.push(text);
+//         }
+//       }
+//     });
+
+//     if (currentTitle && timeSlots.length) {
+//       items.push({ title: currentTitle, times: timeSlots });
+//     }
+
+//     return items;
+//   } catch (err) {
+//     console.error("Predictor parser error:", err);
+//     return [];
+//   }
+// }
 
 /* ===========================================================
    🌦️ WEATHER PARSER
@@ -163,8 +209,11 @@ function parseWeatherHtml(htmlContent) {
     const parser = new DOMParser();
     const doc = parser.parseFromString(htmlContent, "text/html");
 
-    const lines = doc.body.textContent
-      .trim()
+    // Extract plain text safely from HTML
+    const text = doc.body.textContent.trim();
+
+    // Split into individual cleaned lines
+    const lines = text
       .split("\n")
       .map((l) => l.trim())
       .filter((l) => l.length > 0);
@@ -178,16 +227,17 @@ function parseWeatherHtml(htmlContent) {
       type = lines[0];
     }
 
-    // ✅ Loop through for Ends/Expires & Duration
-    lines.forEach((line) => {
-      if (line.startsWith("- Ends:") || line.startsWith("- Expires:")) {
-        ends = line.replace("- Ends:", "").replace("- Expires:", "").trim();
-      }
+    // ✅ Look for "Ends ..." or "Expires ..."
+    const endsMatch = text.match(/(?:Ends|Expires)\s[\d:]+\s[AP]M/i);
+    if (endsMatch) {
+      ends = endsMatch[0].trim(); // e.g. "Expires 6:04:59 AM" or "Ends 5:15:00 PM"
+    }
 
-      if (line.startsWith("- Duration:")) {
-        duration = line.replace("- Duration:", "").trim();
-      }
-    });
+    // ✅ Look for "Duration ..." if present
+    const durationMatch = text.match(/Duration:\s*([^\n]+)/i);
+    if (durationMatch) {
+      duration = durationMatch[1].trim(); // get everything after "Duration:"
+    }
 
     return { type, ends, duration };
   } catch (err) {
@@ -195,6 +245,46 @@ function parseWeatherHtml(htmlContent) {
     return null;
   }
 }
+
+// function parseWeatherHtml(htmlContent) {
+//   if (!htmlContent) return null;
+
+//   try {
+//     const parser = new DOMParser();
+//     const doc = parser.parseFromString(htmlContent, "text/html");
+
+//     const lines = doc.body.textContent
+//       .trim()
+//       .split("\n")
+//       .map((l) => l.trim())
+//       .filter((l) => l.length > 0);
+
+//     let type = "";
+//     let ends = "";
+//     let duration = "";
+
+//     // ✅ First non-empty line = weather type
+//     if (lines.length > 0) {
+//       type = lines[0];
+//     }
+
+//     // ✅ Loop through for Ends/Expires & Duration
+//     lines.forEach((line) => {
+//       if (line.startsWith("- Ends:") || line.startsWith("- Expires:")) {
+//         ends = line.replace("- Ends:", "").replace("- Expires:", "").trim();
+//       }
+
+//       if (line.startsWith("- Duration:")) {
+//         duration = line.replace("- Duration:", "").trim();
+//       }
+//     });
+
+//     return { type, ends, duration };
+//   } catch (err) {
+//     console.error("Weather parser error:", err);
+//     return null;
+//   }
+// }
 
 // function parseWeatherHtml(htmlContent) {
 //   if (!htmlContent) return null;
@@ -323,29 +413,61 @@ function WeatherCard({ stock }) {
 =========================================================== */
 function PredictorCard({ stock }) {
   if (!stock) return null;
-  console.log(stock, "predictor stock")
-  const parsed = parsePredictorHtml(stock.content); 
-  console.log(parsed,"predictor parsed")
+
+  const parsed = parsePredictorHtml(stock.content);
+
   return (
     <div className="bg-purple-50 p-4 rounded-lg mb-3.5 border-l-4 border-purple-400 shadow">
       <div className="flex justify-between items-center mb-2">
         <p className="font-semibold text-purple-800">{stock.author}</p>
         <small className="text-gray-500">
-          {stock.createdAt ? new Date(stock.createdAt).toLocaleTimeString() : ""}
+          {stock.createdAt ? new Date(stock.createdAt).toLocaleString() : ""}
         </small>
       </div>
 
-      {parsed.map((block, index) => (
-        <div key={index} className="mb-3 border-b pb-2">
-          <h3 className="font-bold text-purple-700">{block.title}</h3>
-          {block.times.map((time, i) => (
-            <p key={i} className="text-gray-700">{time}</p>
-          ))}
-        </div>
-      ))}
+      {parsed.length === 0 ? (
+        <p className="text-gray-500 italic">No predictions found.</p>
+      ) : (
+        parsed.map((block, index) => (
+          <div key={index} className="mb-3 border-b pb-2">
+            <h3 className="font-bold text-purple-700">{block.title}</h3>
+            {block.times.map((time, i) => (
+              <p key={i} className="text-gray-700">
+                {time}
+              </p>
+            ))}
+          </div>
+        ))
+      )}
     </div>
   );
 }
+
+// function PredictorCard({ stock }) {
+//   if (!stock) return null;
+//   console.log(stock, "predictor stock")
+//   const parsed = parsePredictorHtml(stock.content); 
+//   console.log(parsed,"predictor parsed")
+//   return (
+//     <div className="bg-purple-50 p-4 rounded-lg mb-3.5 border-l-4 border-purple-400 shadow">
+//       <div className="flex justify-between items-center mb-2">
+//         <p className="font-semibold text-purple-800">{stock.author}</p>
+//         <small className="text-gray-500">
+//           {stock.createdAt ? new Date(stock.createdAt).toLocaleTimeString() : ""}
+//         </small>
+//       </div>
+
+//       {parsed.map((block, index) => (
+//         <div key={index} className="mb-3 border-b pb-2">
+//           <h3 className="font-bold text-purple-700">{block.title}</h3>
+//           {block.times.map((time, i) => (
+//             <p key={i} className="text-gray-700">{time}</p>
+//           ))}
+//         </div>
+//       ))}
+//     </div>
+//   );
+// }
 
 /* ===========================================================
    🔁 CARD ROUTER (Which Card to Show?)
