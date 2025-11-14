@@ -228,10 +228,17 @@ function parseWeatherHtml(htmlContent) {
     }
 
     // ✅ Look for "Ends ..." or "Expires ..."
-    const endsMatch = text.match(/(?:Ends|Expires)\s[\d:]+\s[AP]M/i);
-    if (endsMatch) {
-      ends = endsMatch[0].trim(); // e.g. "Expires 6:04:59 AM" or "Ends 5:15:00 PM"
-    }
+  // Look for Ends or Expires with flexible formats
+const endsMatch = text.match(/(Ends|Expires)[^\d]*([\d:]+\s?[AP]M)/i);
+
+if (endsMatch) {
+  ends = `${endsMatch[1]} ${endsMatch[2]}`;
+}
+
+    // const endsMatch = text.match(/(?:Ends|Expires)\s[\d:]+\s[AP]M/i);
+    // if (endsMatch) {
+    //   ends = endsMatch[0].trim(); // e.g. "Expires 6:04:59 AM" or "Ends 5:15:00 PM"
+    // }
 
     // ✅ Look for "Duration ..." if present
     const durationMatch = text.match(/Duration:\s*([^\n]+)/i);
